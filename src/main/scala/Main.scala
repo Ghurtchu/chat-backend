@@ -1,8 +1,10 @@
 import cats.effect.std.Queue
 import cats.effect.{Clock, ExitCode, IO, IOApp, Ref}
+import cats.implicits.toSemigroupKOps
 import com.comcast.ip4s.IpLiteralSyntax
+import fs2.concurrent.Topic
 import fs2.{Pipe, Stream}
-import org.http4s.HttpRoutes
+import org.http4s.{HttpApp, HttpRoutes}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.websocket.WebSocketBuilder2
@@ -32,11 +34,12 @@ object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
     for {
       usersRef <- IO.ref(Users.initial2)
+      topic    <- Topic[IO, String]
       _        <- EmberServerBuilder
         .default[IO]
         .withHost(host"localhost")
         .withPort(port"9000")
-        .withHttpWebSocketApp(chat(_).orNotFound)
+        .withHttpWebSocketApp(httpApp(topic, _))
         .build
         .useForever
     } yield ExitCode.Success
@@ -50,16 +53,19 @@ object Main extends IOApp {
   }.merge {
     Stream
       .awakeEvery[IO](5.seconds)
-      .map(d => WebSocketFrame.Text(s"Connected for $d"))
+      .map(duration => WebSocketFrame.Text(s"Connected for $duration"))
   }
 
-  private def chat(wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
+  private def httpApp(topic: Topic[IO, String], wsb: WebSocketBuilder2[IO]): HttpApp[IO] =
+    (echo(wsb) <+> chat(topic, wsb)).orNotFound
+
+  private def echo(wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
     val dsl = new Http4sDsl[IO] {}
     import dsl._
 
     HttpRoutes.of[IO] {
       // for testing
-      // websocat "ws://localhost:9002/echo"
+      // websocat "ws://localhost:9000/echo"
       case GET -> Root / "echo" =>
         for {
           // Unbounded queue to store websocket messages from the client, which are pending to be processed.
@@ -71,6 +77,25 @@ object Main extends IOApp {
             receive = _.evalMap(queue.offer),
           )
         } yield response
+    }
+  }
+
+  // Topic[F[_], A] provides an implementation of pub-sub pattern with an X number of publishers and Y number of subscribers.
+  private def chat(topic: Topic[IO, String], wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
+    val dsl = new Http4sDsl[IO] {}
+    import dsl._
+
+    // test: websocat ws://localhost:9000/chat
+    HttpRoutes.of[IO] { case GET -> Root / "chat" =>
+      wsb.build(
+        // Outgoing stream of WebSocket messages to send to the client
+        send = topic.subscribe(maxQueued = 10).map(WebSocketFrame.Text(_)),
+
+        // Sink, where the incoming WebSocket messages from the client are pushed to
+        receive = topic.publish.compose[Stream[IO, WebSocketFrame]](_.collect {
+          case WebSocketFrame.Text(msg, _) => msg
+        }),
+      )
     }
   }
 
