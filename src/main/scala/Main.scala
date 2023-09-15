@@ -3,7 +3,7 @@ import cats.effect.{Clock, ExitCode, IO, IOApp, Ref}
 import cats.implicits.toSemigroupKOps
 import com.comcast.ip4s.IpLiteralSyntax
 import fs2.concurrent.Topic
-import fs2.{Pipe, Stream}
+import fs2.{Pipe, Pull, Stream}
 import org.http4s.{HttpApp, HttpRoutes}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.ember.server.EmberServerBuilder
@@ -57,7 +57,10 @@ object Main extends IOApp {
   }
 
   private def httpApp(topic: Topic[IO, String], wsb: WebSocketBuilder2[IO]): HttpApp[IO] =
-    (echo(wsb) <+> chat(topic, wsb) <+> chatWithUsername(topic, wsb)).orNotFound
+    (echo(wsb) <+>
+      chat(topic, wsb) <+>
+      chatWithUsername(topic, wsb) <+>
+      chatWithDynamicUsername(topic, wsb)).orNotFound
 
   private def echo(wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
     val dsl = new Http4sDsl[IO] {}
@@ -80,7 +83,8 @@ object Main extends IOApp {
     }
   }
 
-  // Topic[F[_], A] provides an implementation of pub-sub pattern with an X number of publishers and Y number of subscribers.
+  // Topic[F[_], A] provides an implementation of pub-sub pattern with an X number of publishers and Y number of subscribers
+  // so basically a good fit for one-to-one or multi-user chat server implementations.
   private def chat(topic: Topic[IO, String], wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
     val dsl = new Http4sDsl[IO] {}
     import dsl._
@@ -99,7 +103,10 @@ object Main extends IOApp {
     }
   }
 
-  private def chatWithUsername(topic: Topic[IO, String], wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
+  private def chatWithUsername(
+    topic: Topic[IO, String],
+    wsb: WebSocketBuilder2[IO],
+  ): HttpRoutes[IO] = {
     val dsl = new Http4sDsl[IO] {}
     import dsl._
 
@@ -113,9 +120,41 @@ object Main extends IOApp {
         },
 
         // Sink, where the incoming WebSocket messages from the client are pushed to
-        receive = topic.publish.compose[Stream[IO, WebSocketFrame]](_.collect {
-          case WebSocketFrame.Text(msg, _) => s"$username: $msg"
-        }),
+        receive = topic.publish.compose[Stream[IO, WebSocketFrame]](
+          _.collect { case WebSocketFrame.Text(msg, _) =>
+            s"$username: $msg"
+          },
+        ),
+      )
+    }
+  }
+
+  private def chatWithDynamicUsername(
+    topic: Topic[IO, String],
+    wsb: WebSocketBuilder2[IO],
+  ): HttpRoutes[IO] = {
+    val dsl = new Http4sDsl[IO] {}
+    import dsl._
+
+    // test: websocat ws://localhost:9000/dynamic
+    HttpRoutes.of[IO] { case GET -> Root / "dynamic" =>
+      wsb.build(
+        // Outgoing stream of WebSocket messages to send to the client
+        send = (Stream.emit("Type username:") ++ topic.subscribe(maxQueued = 10)).collect {
+          // case msg if !msg.split(":").headOption.contains(username) => WebSocketFrame.Text(msg)
+          WebSocketFrame.Text(_)
+        },
+
+        // Sink, where the incoming WebSocket messages from the client are pushed to
+        receive = topic.publish.compose[Stream[IO, WebSocketFrame]](
+          _.collect {
+            // case WebSocketFrame.Text(msg, _) => s"$username: $msg"
+            case WebSocketFrame.Text(msg, _) => msg
+          }.pull.uncons1.flatMap {
+            case Some((head, tail)) => tail.map(head.trim concat ":" concat _).pull.echo
+            case None               => Pull.done
+          }.stream,
+        ),
       )
     }
   }
