@@ -1,6 +1,6 @@
 import cats.effect.std.Queue
-import cats.effect.{ExitCode, IO, IOApp, Ref}
-import com.comcast.ip4s.{IpLiteralSyntax}
+import cats.effect.{Clock, ExitCode, IO, IOApp, Ref}
+import com.comcast.ip4s.IpLiteralSyntax
 import fs2.{Pipe, Stream}
 import org.http4s.HttpRoutes
 import org.http4s.dsl.Http4sDsl
@@ -15,13 +15,13 @@ object Main extends IOApp {
     def fromUserName: String => User = new User(java.util.UUID.randomUUID().toString, _)
   }
 
-  final case class Users(users: List[User])      extends AnyVal {
+  final case class Users(users: List[User]) extends AnyVal {
     def addUser(user: User): Users =
       if (users contains user) this else copy(user :: users)
   }
 
   object Users {
-    def initial: Users = Users(Nil)
+    def initial: Users  = Users(Nil)
     def initial2: Users = Users(List(User("1", "nika"), User("2", "ada")))
   }
 
@@ -30,7 +30,7 @@ object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
     for {
       usersRef <- IO.ref(Users.initial2)
-      _ <- EmberServerBuilder
+      _        <- EmberServerBuilder
         .default[IO]
         .withHost(host"localhost")
         .withPort(port"9000")
@@ -46,21 +46,27 @@ object Main extends IOApp {
     HttpRoutes.of[IO] {
       // for testing
       // websocat "ws://localhost:9002/echo"
-      case GET -> Root / "echo" => {
-        val echoPipe: Pipe[IO, WebSocketFrame, WebSocketFrame] = _.collect { case WebSocketFrame.Text(msg, _) => WebSocketFrame.Text(msg) }
+      case GET -> Root / "echo" =>
+        val echoPipe: Pipe[IO, WebSocketFrame, WebSocketFrame] = _.collect {
+          case WebSocketFrame.Text(msg, _) => WebSocketFrame.Text(msg)
+        }.evalMap {
+          case WebSocketFrame.Text(msg, _) if msg.trim == "time" =>
+            Clock[IO].realTimeInstant.map(t => WebSocketFrame.Text(t.toString))
+
+          case other => IO.pure(other)
+        }
 
         for {
           // Unbounded queue to store websocket messages from the client, which are pending to be processed.
           // For production use bounded queue seems a better choice. Unbounded queue may result in OOM (out of memory error)
           // if the client is sending messages quicker than the server can process them.
-          queue <- Queue.unbounded[IO, WebSocketFrame]
+          queue    <- Queue.unbounded[IO, WebSocketFrame]
           response <- wsb.build(
             send = Stream.repeatEval(queue.take).through(echoPipe),
-            receive = _.evalMap(queue.offer))
+            receive = _.evalMap(queue.offer),
+          )
         } yield response
-      }
     }
   }
-
 
 }
