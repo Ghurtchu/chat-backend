@@ -57,7 +57,7 @@ object Main extends IOApp {
   }
 
   private def httpApp(topic: Topic[IO, String], wsb: WebSocketBuilder2[IO]): HttpApp[IO] =
-    (echo(wsb) <+> chat(topic, wsb)).orNotFound
+    (echo(wsb) <+> chat(topic, wsb) <+> chatWithUsername(topic, wsb)).orNotFound
 
   private def echo(wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
     val dsl = new Http4sDsl[IO] {}
@@ -94,6 +94,27 @@ object Main extends IOApp {
         // Sink, where the incoming WebSocket messages from the client are pushed to
         receive = topic.publish.compose[Stream[IO, WebSocketFrame]](_.collect {
           case WebSocketFrame.Text(msg, _) => msg
+        }),
+      )
+    }
+  }
+
+  private def chatWithUsername(topic: Topic[IO, String], wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
+    val dsl = new Http4sDsl[IO] {}
+    import dsl._
+
+    // test: websocat ws://localhost:9000/chat
+    HttpRoutes.of[IO] { case GET -> Root / "chat" / username =>
+      wsb.build(
+        // Outgoing stream of WebSocket messages to send to the client
+        send = topic.subscribe(maxQueued = 10).collect {
+          // case msg if !msg.split(":").headOption.contains(username) => WebSocketFrame.Text(msg)
+          WebSocketFrame.Text(_)
+        },
+
+        // Sink, where the incoming WebSocket messages from the client are pushed to
+        receive = topic.publish.compose[Stream[IO, WebSocketFrame]](_.collect {
+          case WebSocketFrame.Text(msg, _) => s"$username: $msg"
         }),
       )
     }
