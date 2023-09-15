@@ -10,9 +10,9 @@ lazy val root = (project in file("."))
       "org.http4s" %% "http4s-ember-server" % Http4sVersion,
       "org.http4s" %% "http4s-ember-client" % Http4sVersion,
       "org.http4s" %% "http4s-dsl" % Http4sVersion,
-      "org.typelevel" %% "cats-effect" % "3.2.8",
-      "org.http4s" %% "http4s-circe" % "0.23.0",
-      "io.circe" %% "circe-generic" % "0.14.1"
+      "org.typelevel" %% "cats-effect" % "3.4.8",
+      "org.http4s" %% "http4s-circe" % "0.23.18",
+      "io.circe" %% "circe-generic" % "0.14.5"
     ),
     scalacOptions ++= Seq(
       "-unchecked",
