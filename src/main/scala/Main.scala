@@ -11,7 +11,7 @@ import org.http4s.server.websocket.WebSocketBuilder2
 import org.http4s.websocket.WebSocketFrame
 
 import java.time.Instant
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 object Main extends IOApp {
 
@@ -199,49 +199,81 @@ object Main extends IOApp {
     }
   }
 
+  var a = false
+
   trait LoadConvos {
-    def load(from: Int, to: Int): IO[List[Conversation]]
+    def load(userId: String, from: Int, to: Int): Stream[IO, String]
   }
 
   val loadConvos = new LoadConvos {
 
     val data = List(
-      Conversation("1", Vector.empty),
-      Conversation("2", Vector.empty),
-      Conversation("3", Vector.empty),
-      Conversation("4", Vector.empty),
-      Conversation("5", Vector.empty),
-      Conversation("6", Vector.empty),
-      Conversation("7", Vector.empty),
-      Conversation("8", Vector.empty),
+      "Conversation 1",
+      "Conversation 2",
+      "Conversation 3",
+      "Conversation 4",
+      "Conversation 5",
+      "Conversation 6",
+      "Conversation 7",
+      "Conversation 8",
+      "Conversation 9",
     )
 
-    override def load(from: Int, to: Int): IO[List[Conversation]] = IO.pure {
-      data.slice(from, to)
-    }
+    override def load(userId: String, from: Int, to: Int): Stream[IO, String] =
+      if (!a) Stream.emits(data)
+      else
+        Stream.emits {
+          collection.mutable.ListBuffer(
+            "Conversation 1",
+            "Conversation 4",
+            "Conversation 2",
+            "Conversation 3",
+            "Conversation 7",
+            "Conversation 5",
+            "Conversation 100",
+            "Conversation 8",
+            "Conversation 9",
+          )
+        }
   }
+
+  val scheduleStream: Stream[IO, FiniteDuration] = Stream.awakeEvery[IO](2.seconds)
 
   private def chats(topic: Topic[IO, String], wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
     val dsl = new Http4sDsl[IO] {}
     import dsl._
 
-    // http://localhost:9000/chat/username/1 == will load first 10 (0 to 10)
-    // http://localhost:9000/chat/username/2 == will load next 10 (11 to 20)
-    // ..
-    // http://localhost:9000/chat/username/4 == will load last elements (31 to 36)
+    // set up ws connection = ws://host:port/chat/{userId}
+    // and send messages which will indicate the range
+    // 1,2 (first and second conversation for userId)
+    // 2,10 (second to tenth conversation for userId)
+    // and so on
+    HttpRoutes.of[IO] { case GET -> Root / "chats" / userId =>
+      val stream = topic
+        .subscribe(maxQueued = 10)
+        .flatMap { fromAndToString =>
 
-    HttpRoutes.of[IO] { case GET -> Root / "chats" / username =>
-      wsb.build(
-        // Outgoing stream of WebSocket messages to send to the client
-        send = topic.subscribe(maxQueued = 10).evalMap { page =>
-          val to = page.trim.toInt
-          val from = to - 2
+          val fromAndTo  = fromAndToString.trim.split(",").map(_.toInt)
+          val (from, to) = (fromAndTo.head, fromAndTo.last)
 
+          if (from == 1) a = true else ()
+
+          println("here")
           loadConvos
-            .load(from, to)
+            .load(userId, from, to)
             .map(_.mkString(","))
             .map(WebSocketFrame.Text(_))
-        },
+        }
+        .merge(
+          scheduleStream
+            .flatMap(_ => loadConvos.load(userId, 0, 10))
+            .map(_.mkString(","))
+            .map(WebSocketFrame.Text(_)),
+        )
+
+      wsb.build(
+        // Outgoing stream of WebSocket messages to send to the client
+        send = stream,
 
         // Sink, where the incoming WebSocket messages from the client are pushed to
         receive = topic.publish.compose[Stream[IO, WebSocketFrame]](_.collect {
