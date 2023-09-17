@@ -12,7 +12,9 @@ lazy val root = (project in file("."))
       "org.http4s" %% "http4s-dsl" % Http4sVersion,
       "org.typelevel" %% "cats-effect" % "3.4.8",
       "org.http4s" %% "http4s-circe" % "0.23.18",
-      "io.circe" %% "circe-generic" % "0.14.5"
+      "io.circe" %% "circe-generic" % "0.14.5",
+      "dev.profunktor" %% "redis4cats-effects" % "1.4.1",
+      "dev.profunktor" %% "redis4cats-streams" % "1.4.1"
     ),
     scalacOptions ++= Seq(
       "-unchecked",
