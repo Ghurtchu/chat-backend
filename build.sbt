@@ -14,7 +14,9 @@ lazy val root = (project in file("."))
       "org.http4s" %% "http4s-circe" % "0.23.18",
       "io.circe" %% "circe-generic" % "0.14.5",
       "dev.profunktor" %% "redis4cats-effects" % "1.4.1",
-      "dev.profunktor" %% "redis4cats-streams" % "1.4.1"
+      "dev.profunktor" %% "redis4cats-streams" % "1.4.1",
+      "com.typesafe.akka" %% "akka-actor" % "2.6.16"
+
     ),
     scalacOptions ++= Seq(
       "-unchecked",

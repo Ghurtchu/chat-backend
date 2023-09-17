@@ -224,11 +224,10 @@ object Main extends IOApp {
       else
         Stream.emits {
           collection.mutable.ListBuffer(
-            "Conversation 1",
-            "Conversation 4",
+            "Conversation 1 new message",
+            "Conversation 4 new message",
             "Conversation 2",
             "Conversation 3",
-            "Conversation 7",
             "Conversation 5",
             "Conversation 100",
             "Conversation 8",
@@ -237,9 +236,14 @@ object Main extends IOApp {
         }
   }
 
-  val scheduleStream: Stream[IO, FiniteDuration] = Stream.awakeEvery[IO](2.seconds)
+  sealed trait Msg
 
-  private def chats(topic: Topic[IO, String], wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
+  object Msg {
+    case class MessageFromUser(fromUserId: String, text: String) extends Msg
+    case class LoadConvos(from: Int, to: Int)                    extends Msg
+  }
+
+  private def chats(topic: Topic[IO, Msg], wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
     val dsl = new Http4sDsl[IO] {}
     import dsl._
 
@@ -251,25 +255,26 @@ object Main extends IOApp {
     HttpRoutes.of[IO] { case GET -> Root / "chats" / userId =>
       val stream = topic
         .subscribe(maxQueued = 10)
-        .flatMap { fromAndToString =>
+        .flatMap { msg =>
 
-          val fromAndTo  = fromAndToString.trim.split(",").map(_.toInt)
-          val (from, to) = (fromAndTo.head, fromAndTo.last)
+          msg match {
+            case Msg.MessageFromUser(id, txt) =>
+              loadConvos
+                .load(userId, 0, 10)
+                .map(_.mkString(","))
+                .map(WebSocketFrame.Text(_))
+            case Msg.LoadConvos(from, to)     => ???
+          }
 
-          if (from == 1) a = true else ()
-
-          println("here")
+          // if (from == 1) a = true else ()
+          // val fromAndTo = fromAndToString.trim.split(",").map(_.toInt)
+          // val (from, to) = (fromAndTo.head, fromAndTo.last)
+          // println("here")
           loadConvos
-            .load(userId, from, to)
+            .load(userId, 0, 10)
             .map(_.mkString(","))
             .map(WebSocketFrame.Text(_))
         }
-        .merge(
-          scheduleStream
-            .flatMap(_ => loadConvos.load(userId, 0, 10))
-            .map(_.mkString(","))
-            .map(WebSocketFrame.Text(_)),
-        )
 
       wsb.build(
         // Outgoing stream of WebSocket messages to send to the client
@@ -277,7 +282,7 @@ object Main extends IOApp {
 
         // Sink, where the incoming WebSocket messages from the client are pushed to
         receive = topic.publish.compose[Stream[IO, WebSocketFrame]](_.collect {
-          case WebSocketFrame.Text(msg, _) => msg
+          case WebSocketFrame.Text(msg, _) => new Msg {}
         }),
       )
     }
