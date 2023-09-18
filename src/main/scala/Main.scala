@@ -14,21 +14,8 @@ import java.time.Instant
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 
 object Main extends IOApp {
-
-  // we have two users, user A and user B and each user has list of chats
-
-  // case class User(id: String, name: String, conversations: Vector[Conversation])
-
-  // case class Conversation(id: String, messages: Vector[Message])
-
-  // case class Message(id: String, text: String, fromUserId: String, writtenAt: Instant)
-
-  // req ~/chat/1 =>
-  // - read user from redis User(1, "anzori", conversations) for each conversation load only last 10 messages
-  // -
-
   case class User(id: String, name: String, conversations: Vector[Conversation])
-  case class Conversation(id: String, messages: Vector[Message])
+  case class Conversation(id: String, messages: Vector[Msg])
   case class Message(id: String, text: String, fromUserId: String, writtenAt: Instant)
 
   trait UserRedis {
@@ -41,7 +28,7 @@ object Main extends IOApp {
   val redis: UserRedis = new UserRedis {
 
     val messages = Vector(
-      Message("msg2", "bye nika", "gio-id", Instant.now()),
+      Msg("msg2", "bye nika", "gio-id", Instant.now()),
     )
 
     val repo = List(
@@ -99,36 +86,17 @@ object Main extends IOApp {
   }
 
   // req POST @ /chat/username/chatId
-  val writeStream: Pipe[IO, String, Unit] = _.evalMap { msg =>
+  val writeStream: Pipe[IO, String, Unit]            = _.evalMap { msg =>
     write.write(msg, "id")
   }
-  final case class TopicsRef(ref: Ref[IO, Map[String, Topic[IO, String]]])
-  // userId -> topicId
-  final case class UserChats(ref: Ref[IO, Map[String, String]])
-
   override def run(args: List[String]): IO[ExitCode] =
     for {
-      topic     <- Topic[IO, String]
-      userChats <- IO
-        .ref {
-          Map(
-            "nika" -> "topic1",
-            "gio"  -> "topic1",
-          )
-        }
-        .map(UserChats)
-      topicsRef <- IO
-        .ref {
-          Map(
-            "topic1" -> topic,
-          )
-        }
-        .map(TopicsRef)
-      _         <- EmberServerBuilder
+      topic <- Topic[IO, Msg]
+      _     <- EmberServerBuilder
         .default[IO]
         .withHost(host"localhost")
-        .withPort(port"9001")
-        .withHttpWebSocketApp(httpApp(topic, _, topicsRef, userChats))
+        .withPort(port"8080")
+        .withHttpWebSocketApp(httpApp(topic, _))
         .build
         .useForever
     } yield ExitCode.Success
@@ -146,17 +114,10 @@ object Main extends IOApp {
   }
 
   private def httpApp(
-    topic: Topic[IO, String],
+    topic: Topic[IO, Msg],
     wsb: WebSocketBuilder2[IO],
-    topicsRef: TopicsRef,
-    userChats: UserChats,
   ): HttpApp[IO] =
-    (echo(wsb) <+>
-      chat(topic, wsb) <+>
-      chatWithUsername(topic, wsb) <+>
-      chatWithDynamicUsername(topic, wsb) <+>
-      chats(topic, wsb) <+>
-      chat2(topicsRef, userChats, wsb)).orNotFound
+    (echo(wsb) <+> chats(topic, wsb) <+> chat(topic, wsb)).orNotFound
 
   private def echo(wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
     val dsl = new Http4sDsl[IO] {}
@@ -179,68 +140,35 @@ object Main extends IOApp {
     }
   }
 
-  // Topic[F[_], A] provides an implementation of pub-sub pattern with an X number of publishers and Y number of subscribers
-  // so basically a good fit for one-to-one or multi-user chat server implementations.
-  private def chat(topic: Topic[IO, String], wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
-    val dsl = new Http4sDsl[IO] {}
-    import dsl._
-
-    // test: websocat ws://localhost:9000/chat
-    HttpRoutes.of[IO] { case GET -> Root / "chat" =>
-      wsb.build(
-        // Outgoing stream of WebSocket messages to send to the client
-        send = topic.subscribe(maxQueued = 10).map(WebSocketFrame.Text(_)),
-
-        // Sink, where the incoming WebSocket messages from the client are pushed to
-        receive = topic.publish.compose[Stream[IO, WebSocketFrame]](_.collect {
-          case WebSocketFrame.Text(msg, _) => msg
-        }),
-      )
-    }
-  }
-
-  var a = false
-
   trait LoadConvos {
-    def load(userId: String, from: Int, to: Int): Stream[IO, String]
+    def load(userId: String, from: Int, to: Int): Stream[IO, Conversation]
   }
 
   val loadConvos = new LoadConvos {
 
     val data = List(
-      "Conversation 1",
-      "Conversation 2",
-      "Conversation 3",
-      "Conversation 4",
-      "Conversation 5",
-      "Conversation 6",
-      "Conversation 7",
-      "Conversation 8",
-      "Conversation 9",
+      Conversation("1", Vector.empty),
+      Conversation("2", Vector.empty),
+      Conversation("3", Vector.empty),
+      Conversation("4", Vector.empty),
+      Conversation("5", Vector.empty),
+      Conversation("6", Vector.empty),
+      Conversation("7", Vector.empty),
+      Conversation("8", Vector.empty),
+      Conversation("9", Vector.empty),
+      Conversation("10", Vector.empty),
+      Conversation("11", Vector.empty),
     )
 
-    override def load(userId: String, from: Int, to: Int): Stream[IO, String] =
-      if (!a) Stream.emits(data)
-      else
-        Stream.emits {
-          collection.mutable.ListBuffer(
-            "Conversation 1 new message",
-            "Conversation 4 new message",
-            "Conversation 2",
-            "Conversation 3",
-            "Conversation 5",
-            "Conversation 100",
-            "Conversation 8",
-            "Conversation 9",
-          )
-        }
+    override def load(userId: String, from: Int, to: Int): Stream[IO, Conversation] =
+      Stream.emits(data.slice(from, to))
   }
 
   sealed trait Msg
 
   object Msg {
-    case class MessageFromUser(fromUserId: String, text: String) extends Msg
-    case class LoadConvos(from: Int, to: Int)                    extends Msg
+    case class ChatMessage(fromUserId: String, toUserId: String, text: String) extends Msg
+    case class LoadConversations(from: Int, to: Int)                           extends Msg
   }
 
   private def chats(topic: Topic[IO, Msg], wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
@@ -253,135 +181,72 @@ object Main extends IOApp {
     // 2,10 (second to tenth conversation for userId)
     // and so on
     HttpRoutes.of[IO] { case GET -> Root / "chats" / userId =>
-      val stream = topic
+      val sendStream = topic
         .subscribe(maxQueued = 10)
-        .flatMap { msg =>
+        .flatMap {
 
-          msg match {
-            case Msg.MessageFromUser(id, txt) =>
-              loadConvos
-                .load(userId, 0, 10)
-                .map(_.mkString(","))
-                .map(WebSocketFrame.Text(_))
-            case Msg.LoadConvos(from, to)     => ???
-          }
+          case Msg.ChatMessage(from, to, txt) =>
+            loadConvos
+              .load(userId, 0, 5)
+              .map { convo =>
+                s"""{
+                  |  "id": ${convo.id},
+                  |  "convos": ${convo.messages.mkString("[", ",", "]")}
+                  |}""".stripMargin
+              }
+              .map(WebSocketFrame.Text(_))
 
-          // if (from == 1) a = true else ()
-          // val fromAndTo = fromAndToString.trim.split(",").map(_.toInt)
-          // val (from, to) = (fromAndTo.head, fromAndTo.last)
-          // println("here")
-          loadConvos
-            .load(userId, 0, 10)
-            .map(_.mkString(","))
-            .map(WebSocketFrame.Text(_))
+          case Msg.LoadConversations(from, to) =>
+            loadConvos
+              .load(userId, from, to)
+              .map { convo =>
+                s"""{
+                   |  "id": ${convo.id},
+                   |  "convos": ${convo.messages.mkString("[", ",", "]")}
+                   |}""".stripMargin
+              }
+              .map(WebSocketFrame.Text(_))
+
         }
 
       wsb.build(
         // Outgoing stream of WebSocket messages to send to the client
-        send = stream,
+        send = sendStream,
 
         // Sink, where the incoming WebSocket messages from the client are pushed to
         receive = topic.publish.compose[Stream[IO, WebSocketFrame]](_.collect {
-          case WebSocketFrame.Text(msg, _) => new Msg {}
+          case WebSocketFrame.Text(msg, _) =>
+            val fromAndTo  = msg.trim.split(",").map(_.toInt)
+            val (from, to) = (fromAndTo.head, fromAndTo.last)
+
+            Msg.LoadConversations(from, to)
         }),
       )
     }
   }
 
-  // topicId -> topic = topicsRef
-  // userId  -> topicId = chatsRef
-  private def chat2(
-    topicsRef: TopicsRef,
-    userChats: UserChats,
-    wsb: WebSocketBuilder2[IO],
-  ): HttpRoutes[IO] = {
+  private def chat(topic: Topic[IO, Msg], wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
     val dsl = new Http4sDsl[IO] {}
     import dsl._
 
-    // test: websocat ws://localhost:9000/chat
-    HttpRoutes.of[IO] { case GET -> Root / "chat2" / username =>
-      for {
-        topics <- topicsRef.ref.get
-        chats  <- userChats.ref.get
-        res    <- {
-          val top = for {
-            topicId <- chats.get(username)
-            topic   <- topics.get(topicId)
-          } yield topic
-
-          top match {
-            case Some(topic) =>
-              wsb.build(
-                // Outgoing stream of WebSocket messages to send to the client
-                send = topic.subscribe(maxQueued = 10).map(WebSocketFrame.Text(_)),
-
-                // Sink, where the incoming WebSocket messages from the client are pushed to
-                receive = topic.publish.compose[Stream[IO, WebSocketFrame]](_.collect {
-                  case WebSocketFrame.Text(msg, _) => msg
-                }),
-              )
-            case None        => Ok("XD")
-          }
+    HttpRoutes.of[IO] { case GET -> Root / "chats" / fromUserId / "chat" / toUserId =>
+      val sendStream = topic
+        .subscribe(maxQueued = 10)
+        .collect { case Msg.ChatMessage(from, to, txt) =>
+          // write to redis
+          // send to websocket
+          txt
         }
-      } yield res
-    }
-  }
+        .map(WebSocketFrame.Text(_))
 
-  private def chatWithUsername(
-    topic: Topic[IO, String],
-    wsb: WebSocketBuilder2[IO],
-  ): HttpRoutes[IO] = {
-    val dsl = new Http4sDsl[IO] {}
-    import dsl._
-
-    // req =>
-    // req => topic => consumer from topic
-
-    // test: websocat ws://localhost:9000/chat
-    HttpRoutes.of[IO] { case GET -> Root / "chat" / username =>
       wsb.build(
         // Outgoing stream of WebSocket messages to send to the client
-        send = topic.subscribe(maxQueued = 10).collect {
-          // case msg if !msg.split(":").headOption.contains(username) => WebSocketFrame.Text(msg)
-          WebSocketFrame.Text(_)
-        },
+        send = sendStream,
 
         // Sink, where the incoming WebSocket messages from the client are pushed to
-        receive = topic.publish.compose[Stream[IO, WebSocketFrame]](
-          _.collect { case WebSocketFrame.Text(msg, _) =>
-            s"$username: $msg"
-          },
-        ),
-      )
-    }
-  }
-
-  private def chatWithDynamicUsername(
-    topic: Topic[IO, String],
-    wsb: WebSocketBuilder2[IO],
-  ): HttpRoutes[IO] = {
-    val dsl = new Http4sDsl[IO] {}
-    import dsl._
-
-    // test: websocat ws://localhost:9000/dynamic
-    HttpRoutes.of[IO] { case GET -> Root / "dynamic" =>
-      wsb.build(
-        // Outgoing stream of WebSocket messages to send to the client
-        send = (Stream.emit("Type username:") ++ topic.subscribe(maxQueued = 10)).collect {
-          // case msg if !msg.split(":").headOption.contains(username) => WebSocketFrame.Text(msg)
-          WebSocketFrame.Text(_)
-        },
-
-        // Sink, where the incoming WebSocket messages from the client are pushed to
-        receive = topic.publish.compose[Stream[IO, WebSocketFrame]](
-          _.collect {
-            // case WebSocketFrame.Text(msg, _) => s"$username: $msg"
-            case WebSocketFrame.Text(msg, _) => msg
-          }.pull.uncons1.flatMap {
-            case Some((head, tail)) => tail.map(head.trim concat ":" concat _).pull.echo
-            case None               => Pull.done
-          }.stream,
-        ),
+        receive = topic.publish.compose[Stream[IO, WebSocketFrame]](_.collect {
+          case WebSocketFrame.Text(msg, _) => Msg.ChatMessage(fromUserId, toUserId, msg)
+        }),
       )
     }
   }
