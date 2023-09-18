@@ -13,9 +13,8 @@ lazy val root = (project in file("."))
       "org.typelevel" %% "cats-effect" % "3.4.8",
       "org.http4s" %% "http4s-circe" % "0.23.18",
       "io.circe" %% "circe-generic" % "0.14.5",
-      "dev.profunktor" %% "redis4cats-effects" % "1.4.1",
-      "dev.profunktor" %% "redis4cats-streams" % "1.4.1",
-      "com.typesafe.akka" %% "akka-actor" % "2.6.16"
+      "org.tpolecat" %% "doobie-core"      % "1.0.0-RC4",
+      "org.tpolecat" %% "doobie-postgres"  % "1.0.0-RC4", // Postgres driver 42.6.0 + type mappings.
 
     ),
     scalacOptions ++= Seq(
