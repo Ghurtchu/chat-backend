@@ -1,5 +1,5 @@
 import cats.effect.std.Queue
-import cats.effect.{Clock, ExitCode, IO, IOApp, Ref}
+import cats.effect.{Clock, ExitCode, IO, IOApp}
 import cats.implicits.toSemigroupKOps
 import com.comcast.ip4s.IpLiteralSyntax
 import fs2.concurrent.Topic
@@ -11,84 +11,50 @@ import org.http4s.server.websocket.WebSocketBuilder2
 import org.http4s.websocket.WebSocketFrame
 
 import java.time.Instant
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration.DurationInt
+
+/**
+ *
+ * WITH LastMessageConversations AS (
+    SELECT
+        uc.user_id,
+        c.conversation_id,
+        c.conversation_name,
+        MAX(m.written_at) AS last_message_written_at
+    FROM
+        user_conversation uc
+    JOIN
+        conversation c ON uc.conversation_id = c.conversation_id
+    JOIN
+        message m ON c.conversation_id = m.conversation_id
+    WHERE
+        uc.user_id = 1 -- Replace :user_id with the actual user's ID
+    GROUP BY
+        uc.user_id, c.conversation_id, c.conversation_name
+)
+SELECT
+    LMC.user_id,
+    LMC.conversation_id,
+    LMC.conversation_name,
+    M.message_content AS last_message_content,
+    LMC.last_message_written_at AS last_message_written_at
+FROM
+    LastMessageConversations LMC
+JOIN
+    message M ON LMC.conversation_id = M.conversation_id
+    AND LMC.last_message_written_at = M.written_at
+ORDER BY
+    LMC.last_message_written_at DESC
+LIMIT 1;
+
+ *
+ */
 
 object Main extends IOApp {
   case class User(id: String, name: String, conversations: Vector[Conversation])
-  case class Conversation(id: String, messages: Vector[Msg])
+  case class Conversation(id: String, messages: Vector[Message])
   case class Message(id: String, text: String, fromUserId: String, writtenAt: Instant)
 
-  trait UserRedis {
-
-    /** load user, load last 10 conversations, for each conversation load only last message
-      */
-    def loadUser(id: String): IO[User]
-  }
-
-  val redis: UserRedis = new UserRedis {
-
-    val messages = Vector(
-      Msg("msg2", "bye nika", "gio-id", Instant.now()),
-    )
-
-    val repo = List(
-      User(
-        "nika-id",
-        "nika",
-        Vector(Conversation("nika-gio", messages)),
-      ),
-      User(
-        "gio-id",
-        "gio",
-        Vector(Conversation("nika-gio", messages)),
-      ),
-    )
-
-    override def loadUser(id: String): IO[User] = IO.pure {
-      repo.find(_.id == id).get
-    }
-  }
-
-  // login
-  // req @ /chat/username
-  val readUser: Pipe[IO, String, User] = _.evalMap(redis.loadUser)
-
-  // request specific chat
-  // req @ /chat/username/chatId
-
-  trait ConversationRedis {
-
-    /** load conversation load only last 50 messages in convo
-      */
-    def loadConvo(id: String): IO[Conversation]
-  }
-
-  val convoRedis = new ConversationRedis {
-
-    /** load conversation load only last 50 messages in convo
-      */
-    override def loadConvo(id: String): IO[Conversation] = IO(Conversation("1", Vector.empty))
-  }
-
-  val readChat: Stream[IO, Conversation] = Stream.eval {
-    convoRedis.loadConvo("nika-gio")
-  }
-
-  trait WriteMessageRedis {
-
-    /** writes message to redis
-      */
-    def write(text: String, fromUserId: String): IO[Unit]
-  }
-
-  val write = new WriteMessageRedis {
-    override def write(text: String, fromUserId: String): IO[Unit] = ???
-  }
-
-  // req POST @ /chat/username/chatId
-  val writeStream: Pipe[IO, String, Unit]            = _.evalMap { msg =>
-    write.write(msg, "id")
-  }
   override def run(args: List[String]): IO[ExitCode] =
     for {
       topic <- Topic[IO, Msg]
@@ -189,23 +155,25 @@ object Main extends IOApp {
             loadConvos
               .load(userId, 0, 5)
               .map { convo =>
-                s"""{
-                  |  "id": ${convo.id},
-                  |  "convos": ${convo.messages.mkString("[", ",", "]")}
-                  |}""".stripMargin
+                WebSocketFrame.Text {
+                  s"""{
+                     |  "id": ${convo.id},
+                     |  "convos": ${convo.messages.mkString("[", ",", "]")}
+                     |}""".stripMargin
+                }
               }
-              .map(WebSocketFrame.Text(_))
 
           case Msg.LoadConversations(from, to) =>
             loadConvos
               .load(userId, from, to)
               .map { convo =>
-                s"""{
-                   |  "id": ${convo.id},
-                   |  "convos": ${convo.messages.mkString("[", ",", "]")}
-                   |}""".stripMargin
+                WebSocketFrame.Text {
+                  s"""{
+                     |  "id": ${convo.id},
+                     |  "convos": ${convo.messages.mkString("[", ",", "]")}
+                     |}""".stripMargin
+                }
               }
-              .map(WebSocketFrame.Text(_))
 
         }
 
