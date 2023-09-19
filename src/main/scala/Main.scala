@@ -1,9 +1,8 @@
-import cats.effect.std.Queue
-import cats.effect.{Clock, ExitCode, IO, IOApp}
+import cats.effect.{ExitCode, IO, IOApp, Ref}
 import cats.implicits.toSemigroupKOps
 import com.comcast.ip4s.IpLiteralSyntax
 import fs2.concurrent.Topic
-import fs2.{Pipe, Pull, Stream}
+import fs2.Stream
 import org.http4s.{HttpApp, HttpRoutes}
 import org.http4s.dsl.Http4sDsl
 import org.http4s.ember.server.EmberServerBuilder
@@ -13,6 +12,7 @@ import doobie._
 import doobie.implicits._
 
 import java.time.Instant
+import scala.collection.concurrent.TrieMap
 
 // psql -h localhost -p 5432 -U aghurtchumelia -d chat
 // db-name: chat
@@ -49,12 +49,15 @@ object Main extends IOApp {
 
   override def run(args: List[String]): IO[ExitCode] =
     for {
-      topic <- Topic[IO, Msg]
-      _     <- EmberServerBuilder
+      topic                      <- Topic[IO, Msg]
+      loadedConversationsPerUser <- IO.ref(
+        TrieMap.empty[String, Int],
+      ) // map(user id -> number of loaded conversations)
+      _                          <- EmberServerBuilder
         .default[IO]
         .withHost(host"localhost")
         .withPort(port"8080")
-        .withHttpWebSocketApp(httpApp(topic, _))
+        .withHttpWebSocketApp(httpApp(topic, _, loadedConversationsPerUser))
         .build
         .useForever
     } yield ExitCode.Success
@@ -62,8 +65,9 @@ object Main extends IOApp {
   private def httpApp(
     topic: Topic[IO, Msg],
     wsb: WebSocketBuilder2[IO],
+    loadedConversationsPerUser: Ref[IO, TrieMap[String, Int]],
   ): HttpApp[IO] =
-    (chats(topic, wsb) <+> chat(topic, wsb)).orNotFound
+    (chats(topic, wsb, loadedConversationsPerUser) <+> chat(topic, wsb)).orNotFound
 
   trait LoadConvos {
     def load(userId: Int, lastN: Int): IO[List[Conversation]]
@@ -116,11 +120,15 @@ object Main extends IOApp {
   sealed trait Msg
 
   object Msg {
-    case class ChatMessage(fromUserId: String, toUserId: String, text: String) extends Msg
-    case class LoadConversations(n: Int)                                       extends Msg
+    case class ChatMessage(fromUserId: String, toUserId: String, text: String, timestamp: Instant) extends Msg
+    case class LoadConversations(n: Int)                                                           extends Msg
   }
 
-  private def chats(topic: Topic[IO, Msg], wsb: WebSocketBuilder2[IO]): HttpRoutes[IO] = {
+  private def chats(
+    topic: Topic[IO, Msg],
+    wsb: WebSocketBuilder2[IO],
+    loadedConversationsPerUser: Ref[IO, TrieMap[String, Int]],
+  ): HttpRoutes[IO] = {
     val dsl = new Http4sDsl[IO] {}
     import dsl._
 
@@ -132,23 +140,24 @@ object Main extends IOApp {
     HttpRoutes.of[IO] { case GET -> Root / "chats" / userId =>
       val sendStream: Stream[IO, WebSocketFrame.Text] = topic
         .subscribe(maxQueued = 10)
-        .evalMap { case Msg.LoadConversations(n) =>
-          loadConvos
-            .load(userId.trim.toInt, n)
-            .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]")))
+        .evalMap {
 
-//          case Msg.LoadConversations(from, to) =>
-//            loadConvos
-//              .load(userId, from, to)
-//              .map { convo =>
-//                WebSocketFrame.Text {
-//                  s"""{
-//                     |  "id": ${convo.id},
-//                     |  "convos": ${convo.messages.mkString("[", ",", "]")}
-//                     |}""".stripMargin
-//                }
-//              }
+          case Msg.LoadConversations(n) =>
+            for {
+              _      <- loadedConversationsPerUser.update(_ + (userId -> n))
+              convos <- loadConvos
+                .load(userId.trim.toInt, n)
+                .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]")))
+            } yield convos
 
+          case Msg.ChatMessage(from, to, msg, timestamp) =>
+            for {
+              n   <- loadedConversationsPerUser.get.map(_.getOrElse(userId, 10))
+              _   <- IO.unit // write to DB
+              res <- loadConvos
+                .load(userId.trim.toInt, n)
+                .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]")))
+            } yield res
         }
 
       wsb.build(
@@ -170,25 +179,51 @@ object Main extends IOApp {
     val dsl = new Http4sDsl[IO] {}
     import dsl._
 
-    HttpRoutes.of[IO] { case GET -> Root / "chats" / fromUserId / "chat" / toUserId =>
-      val sendStream: Stream[IO, WebSocketFrame.Text] = topic
-        .subscribe(maxQueued = 10)
-        .collect { case Msg.ChatMessage(from, to, txt) =>
-          // write to redis
-          // send to websocket
-          txt
-        }
-        .map(WebSocketFrame.Text(_))
+    HttpRoutes.of[IO] {
+      case GET -> Root / "from" / fromUserId / "to" / toUserId / "conversation" / conversationId =>
+        val sendStream: Stream[IO, WebSocketFrame.Text] = topic
+          .subscribe(maxQueued = 10)
+          .collect { case Msg.ChatMessage(from, to, txt, timestamp) =>
+            // write to db
+            /**
+             * -- Start a transaction
+             * BEGIN;
+             *
+             * -- Declare a variable to store the message_id
+             * DO $$
+             * DECLARE
+             * my_message_id integer;
+             * BEGIN
+             * -- Insert a new message into the message table and retrieve the message_id
+             * INSERT INTO message (message_content, conversation_id, fromuserid, touserid, written_at)
+             * VALUES ('Your message content here', 1, 1, 2, '2023-09-19T09:41:41.334277Z'::timestamp)
+             * RETURNING message_id INTO my_message_id;
+             *
+             * -- Insert a new record into the conversation_message table using the retrieved message_id
+             * INSERT INTO conversation_message (conversation_id, message_id)
+             * VALUES (1, my_message_id);
+             * END $$;
+             *
+             * -- Commit the transaction
+             * COMMIT;
+             *
+             *
+             */
+            /
+            // send to websocket
+            txt
+          }
+          .map(WebSocketFrame.Text(_))
 
-      wsb.build(
-        // Outgoing stream of WebSocket messages to send to the client
-        send = sendStream,
+        wsb.build(
+          // Outgoing stream of WebSocket messages to send to the client
+          send = sendStream,
 
-        // Sink, where the incoming WebSocket messages from the client are pushed to
-        receive = topic.publish.compose[Stream[IO, WebSocketFrame]](_.collect {
-          case WebSocketFrame.Text(msg, _) => Msg.ChatMessage(fromUserId, toUserId, msg)
-        }),
-      )
+          // Sink, where the incoming WebSocket messages from the client are pushed to
+          receive = topic.publish.compose[Stream[IO, WebSocketFrame]](_.collect {
+            case WebSocketFrame.Text(msg, _) => Msg.ChatMessage(fromUserId, toUserId, msg, Instant.now())
+          }),
+        )
     }
   }
 
