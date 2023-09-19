@@ -1,4 +1,3 @@
-import cats.effect.std.Queue
 import cats.effect.{ExitCode, IO, IOApp, Ref}
 import cats.implicits.toSemigroupKOps
 import com.comcast.ip4s.IpLiteralSyntax
@@ -75,40 +74,34 @@ object Main extends IOApp {
     import dsl._
 
     // set up ws connection = ws://host:port/chat/{userId}
-    // and send messages which will indicate the range
-    // 1,2 (first and second conversation for userId)
-    // 2,10 (second to tenth conversation for userId)
+    // and load n amount of conversations
+    // 2 = last 2 convos
+    // 10 = last 10 convos
     // and so on
     HttpRoutes.of[IO] { case GET -> Root / "chats" / userId =>
-      val sendStream: Stream[IO, WebSocketFrame.Text] = topic
+      val subscribeThenProcessThenSendToWebSocket: Stream[IO, WebSocketFrame.Text] = topic
         .subscribe(maxQueued = 10)
         .evalMap {
-
           case TopicMessage.LoadConversations(n) =>
             for {
               _             <- loadedConversationsPerUser.update(_ + (userId -> n))
               conversations <- loadConvos
                 .load(userId.trim.toInt, n)
-                .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]")))
+                .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]"))) // TODO: serialize to Json later
             } yield conversations
 
           case TopicMessage.ChatMessageFromClient(id, from, to, msg, timestamp) =>
             for {
-              n             <- loadedConversationsPerUser.get.map(_.getOrElse(userId, 10))
-              _             <- IO {
-                // write msg to db
-                ()
-              }
-              conversations <- loadConvos
-                .load(userId.trim.toInt, n)
-                .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]")))
-            } yield conversations
+              count  <- loadedConversationsPerUser.get.map(_.getOrElse(userId, 10))
+              convos <- loadConvos
+                .load(userId.trim.toInt, count)
+                .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]"))) // TODO: serialize to Json later
+            } yield convos
         }
 
       wsb.build(
         // Outgoing stream of WebSocket messages to send to the client
-        send = sendStream,
-
+        send = subscribeThenProcessThenSendToWebSocket,
         // Sink, where the incoming WebSocket messages from the client are pushed to
         receive = topic.publish.compose[Stream[IO, WebSocketFrame]](_.collect {
           case WebSocketFrame.Text(msg, _) =>
@@ -128,18 +121,16 @@ object Main extends IOApp {
     import dsl._
     HttpRoutes.of[IO] {
       case GET -> Root / "from" / fromUserId / "to" / toUserId / "conversation" / conversationId =>
-
-        val sendStream: Stream[IO, WebSocketFrame.Text] = topic
+        val consumeThenProcessThenSendToWebSocket: Stream[IO, WebSocketFrame.Text] =
+          topic
           .subscribe(maxQueued = 10)
           .collect {
             case msg @ TopicMessage.ChatMessageFromClient(id, from, to, txt, timestamp) =>
               WebSocketFrame.Text(msg.toString)
           }
 
-      val receiveT = topic.publish.compose[Stream[IO, WebSocketFrame]](_.evalMap { case WebSocketFrame.Text(msg, _) =>
-        println (msg.stripLineEnd)
-
-        val action = sql"""
+      val receiveThenProcessThenPublish = topic.publish.compose[Stream[IO, WebSocketFrame]](_.evalMap { case WebSocketFrame.Text(msg, _) =>
+        val dbAction = sql"""
              WITH inserted_message AS (
           INSERT INTO message (message_content, conversation_id, fromuserid, touserid, written_at)
           VALUES (${msg.stripLineEnd}, ${conversationId.toInt}, ${fromUserId.toInt}, ${toUserId.toInt}, ${Instant.now().toString}::timestamp)
@@ -148,16 +139,15 @@ object Main extends IOApp {
         SELECT message_id FROM inserted_message;
            """.query[Int].unique
         for {
-          newMessageId <- action.transact(xa).onError(IO.println)
+          newMessageId <- dbAction.transact(xa).onError(IO.println)
         } yield TopicMessage.ChatMessageFromClient(newMessageId, fromUserId, toUserId, msg.stripLineEnd, Instant.now())
       })
 
       wsb.build(
         // Outgoing stream of WebSocket messages to send to the client
-        send = sendStream,
-
+        send = consumeThenProcessThenSendToWebSocket,
         // Sink, where the incoming WebSocket messages from the client are pushed to
-        receive = receiveT
+        receive = receiveThenProcessThenPublish
       )
     }
   }
