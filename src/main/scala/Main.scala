@@ -1,7 +1,8 @@
 import cats.effect.{ExitCode, IO, IOApp, Ref}
 import cats.implicits.toSemigroupKOps
 import com.comcast.ip4s.IpLiteralSyntax
-import db.PartialConversationsRepo
+import db.{MessageWithoutIdRepo, PartialConversationsRepo}
+import domain.MessageWithoutId
 import fs2.concurrent.Topic
 import fs2.Stream
 import org.http4s.{HttpApp, HttpRoutes}
@@ -42,6 +43,7 @@ object Main extends IOApp {
   )
 
   val loadConvos = PartialConversationsRepo.impl(xa)
+  val writeMsg = MessageWithoutIdRepo.impl(xa)
 
   override def run(args: List[String]): IO[ExitCode] =
     for {
@@ -59,9 +61,9 @@ object Main extends IOApp {
     } yield ExitCode.Success
 
   private def httpApp(
-                       topic: Topic[IO, Msg],
-                       wsb: WebSocketBuilder2[IO],
-                       loadedConversationsPerUser: Ref[IO, TrieMap[String, Int]],
+    topic: Topic[IO, Msg],
+    wsb: WebSocketBuilder2[IO],
+    loadedConversationsPerUser: Ref[IO, TrieMap[String, Int]],
   ): HttpApp[IO] =
     (conversations(topic, wsb, loadedConversationsPerUser) <+> conversation(topic, wsb)).orNotFound
 
@@ -130,16 +132,8 @@ object Main extends IOApp {
           }
 
       val receiveThenProcessThenPublish = topic.publish.compose[Stream[IO, WebSocketFrame]](_.evalMap { case WebSocketFrame.Text(msg, _) =>
-        val dbAction = sql"""
-             WITH inserted_message AS (
-          INSERT INTO message (message_content, conversation_id, fromuserid, touserid, written_at)
-          VALUES (${msg.stripLineEnd}, ${conversationId.toInt}, ${fromUserId.toInt}, ${toUserId.toInt}, ${Instant.now().toString}::timestamp)
-          RETURNING message_id
-        )
-        SELECT message_id FROM inserted_message;
-           """.query[Int].unique
         for {
-          newMessageId <- dbAction.transact(xa).onError(IO.println)
+          newMessageId <- writeMsg.write(MessageWithoutId(msg.stripLineEnd, conversationId, fromUserId, toUserId, Instant.now()))
         } yield Msg.ChatMessage(newMessageId, fromUserId, toUserId, msg.stripLineEnd, Instant.now())
       })
 

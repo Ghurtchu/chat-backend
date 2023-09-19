@@ -2,8 +2,7 @@ package domain
 
 import java.time.Instant
 
-final case class Message(
-  id: String,
+case class MessageWithoutId(
   text: String,
   conversationId: String,
   fromUserId: String,
