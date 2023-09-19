@@ -11,7 +11,7 @@ import org.http4s.server.websocket.WebSocketBuilder2
 import org.http4s.websocket.WebSocketFrame
 import doobie._
 import doobie.implicits._
-import topic.TopicMessage
+import ws.Msg
 
 import java.time.Instant
 import scala.collection.concurrent.TrieMap
@@ -45,7 +45,7 @@ object Main extends IOApp {
 
   override def run(args: List[String]): IO[ExitCode] =
     for {
-      topic                      <- Topic[IO, TopicMessage]
+      topic                      <- Topic[IO, Msg]
       loadedConversationsPerUser <- IO.ref(
         TrieMap.empty[String, Int],
       ) // map(user id -> number of loaded conversations)
@@ -59,14 +59,14 @@ object Main extends IOApp {
     } yield ExitCode.Success
 
   private def httpApp(
-    topic: Topic[IO, TopicMessage],
-    wsb: WebSocketBuilder2[IO],
-    loadedConversationsPerUser: Ref[IO, TrieMap[String, Int]],
+                       topic: Topic[IO, Msg],
+                       wsb: WebSocketBuilder2[IO],
+                       loadedConversationsPerUser: Ref[IO, TrieMap[String, Int]],
   ): HttpApp[IO] =
-    (chats(topic, wsb, loadedConversationsPerUser) <+> chat(topic, wsb)).orNotFound
+    (conversations(topic, wsb, loadedConversationsPerUser) <+> conversation(topic, wsb)).orNotFound
 
-  private def chats(
-    topic: Topic[IO, TopicMessage],
+  private def conversations(
+    topic: Topic[IO, Msg],
     wsb: WebSocketBuilder2[IO],
     loadedConversationsPerUser: Ref[IO, TrieMap[String, Int]],
   ): HttpRoutes[IO] = {
@@ -78,11 +78,11 @@ object Main extends IOApp {
     // 2 = last 2 convos
     // 10 = last 10 convos
     // and so on
-    HttpRoutes.of[IO] { case GET -> Root / "chats" / userId =>
+    HttpRoutes.of[IO] { case GET -> Root / "conversations" / userId =>
       val subscribeThenProcessThenSendToWebSocket: Stream[IO, WebSocketFrame.Text] = topic
         .subscribe(maxQueued = 10)
         .evalMap {
-          case TopicMessage.LoadConversations(n) =>
+          case Msg.LoadConversations(n) =>
             for {
               _             <- loadedConversationsPerUser.update(_ + (userId -> n))
               conversations <- loadConvos
@@ -90,7 +90,7 @@ object Main extends IOApp {
                 .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]"))) // TODO: serialize to Json later
             } yield conversations
 
-          case TopicMessage.ChatMessageFromClient(id, from, to, msg, timestamp) =>
+          case Msg.ChatMessage(id, from, to, msg, timestamp) =>
             for {
               count  <- loadedConversationsPerUser.get.map(_.getOrElse(userId, 10))
               convos <- loadConvos
@@ -107,14 +107,14 @@ object Main extends IOApp {
           case WebSocketFrame.Text(msg, _) =>
             val amount = msg.trim.toInt
 
-            TopicMessage.LoadConversations(amount)
+            Msg.LoadConversations(amount)
         }),
       )
     }
   }
 
-  private def chat(
-    topic: Topic[IO, TopicMessage],
+  private def conversation(
+    topic: Topic[IO, Msg],
     wsb: WebSocketBuilder2[IO]
   ): HttpRoutes[IO] = {
     val dsl = new Http4sDsl[IO] {}
@@ -125,7 +125,7 @@ object Main extends IOApp {
           topic
           .subscribe(maxQueued = 10)
           .collect {
-            case msg @ TopicMessage.ChatMessageFromClient(id, from, to, txt, timestamp) =>
+            case msg @ Msg.ChatMessage(id, from, to, txt, timestamp) =>
               WebSocketFrame.Text(msg.toString)
           }
 
@@ -140,7 +140,7 @@ object Main extends IOApp {
            """.query[Int].unique
         for {
           newMessageId <- dbAction.transact(xa).onError(IO.println)
-        } yield TopicMessage.ChatMessageFromClient(newMessageId, fromUserId, toUserId, msg.stripLineEnd, Instant.now())
+        } yield Msg.ChatMessage(newMessageId, fromUserId, toUserId, msg.stripLineEnd, Instant.now())
       })
 
       wsb.build(

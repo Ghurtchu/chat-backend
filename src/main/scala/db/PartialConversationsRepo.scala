@@ -5,6 +5,11 @@ import domain.{Conversation, PartialConversation}
 import doobie._
 import doobie.implicits._
 trait PartialConversationsRepo {
+
+  /** implements lazy loading of conversations for high performance
+    *
+    * load lastN amount of conversation and for each conversation read only last message
+    */
   def load(userId: Int, lastN: Int): IO[List[PartialConversation]]
 }
 
@@ -13,37 +18,17 @@ object PartialConversationsRepo {
     override def load(userId: Int, lastN: Int): IO[List[PartialConversation]] = {
       val query =
         sql"""
-          SELECT DISTINCT ON (c.conversation_id)
-            c.conversation_id,
-            c.conversation_name
-        FROM
-            "user" u
-        JOIN
-            user_conversation uc ON u.user_id = uc.user_id
-        JOIN
-            conversation c ON uc.conversation_id = c.conversation_id
-        LEFT JOIN
-            (
-                SELECT
-                    conversation_id,
-                    MAX(written_at) AS max_written_at
-                FROM
-                    message
-                GROUP BY
-                    conversation_id
-            ) max_message
-            ON c.conversation_id = max_message.conversation_id
-        LEFT JOIN
-            message m
-            ON max_message.conversation_id = m.conversation_id
-        WHERE
-            u.user_id = $userId
-        ORDER BY
-            c.conversation_id,
-            m.written_at DESC
-        LIMIT
-            $lastN;
-           """.query[PartialConversation]
+          SELECT c.conversation_id, m.message_content
+        FROM (
+          SELECT DISTINCT ON (conversation_id) conversation_id, message_id
+          FROM message
+          WHERE fromuserid = 3 OR touserid = 3
+          ORDER BY conversation_id, written_at DESC
+        ) AS last_messages
+        JOIN conversation c ON last_messages.conversation_id = c.conversation_id
+        JOIN message m ON last_messages.message_id = m.message_id
+        ORDER BY m.written_at DESC
+        LIMIT $lastN;""".query[PartialConversation]
 
       query.stream.compile.toList
         .transact(xa)
