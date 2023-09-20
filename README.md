@@ -8,7 +8,7 @@ For now a single user will have two websocket connections to the backend:
 - primary WS connection (`ws://localhost:8080/from/{fromUserId}/to/{toUserId}/conversation/{conversationId}`):
   - main chat ws connection which sends and expects chat messages from and to user
   - upon receiving `Msg.ChatMessage` it inserts the new record in `DB` and publishes the message in `Topic` so that background WS connection updates the conversations UI
-  - 
+    
 P.S user auth & login will be implemented based on email & password and JWT as a separate backend in Java by my friend (using shared PostgreSQL database)
 
 Not much done yet, still in progress :D
