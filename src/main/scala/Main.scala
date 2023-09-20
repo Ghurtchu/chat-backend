@@ -34,16 +34,16 @@ object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
     for {
       // global topic where users will publish and subscribe Msg subtypes
-      topic                      <- Topic[IO, Msg]
+      topic <- Topic[IO, Msg]
 
       // stores how many conversations are loaded for each user
-      loadedConversationsPerUser <- IO.ref(TrieMap.empty[String, Int]) // map(user id -> number of loaded conversations)
+      loadedConvosPerUser <- IO.ref(TrieMap.empty[String, Int]) // map(user id -> number of loaded conversations)
 
-      _                          <- EmberServerBuilder
+      _ <- EmberServerBuilder
         .default[IO]
         .withHost(host"localhost")
         .withPort(port"8080")
-        .withHttpWebSocketApp(httpApp(topic, _, loadedConversationsPerUser))
+        .withHttpWebSocketApp(httpApp(topic, _, loadedConvosPerUser))
         .build
         .useForever
     } yield ExitCode.Success
@@ -51,14 +51,14 @@ object Main extends IOApp {
   private def httpApp(
     topic: Topic[IO, Msg],
     wsb: WebSocketBuilder2[IO],
-    loadedConversationsPerUser: Ref[IO, TrieMap[String, Int]],
+    loadedConvosPerUser: Ref[IO, TrieMap[String, Int]],
   ): HttpApp[IO] =
-    (conversations(topic, wsb, loadedConversationsPerUser) <+> conversation(topic, wsb)).orNotFound
+    (conversations(topic, wsb, loadedConvosPerUser) <+> conversation(topic, wsb)).orNotFound
 
   private def conversations(
     topic: Topic[IO, Msg],
     wsb: WebSocketBuilder2[IO],
-    loadedConversationsPerUser: Ref[IO, TrieMap[String, Int]],
+    loadedConvosPerUser: Ref[IO, TrieMap[String, Int]],
   ): HttpRoutes[IO] = {
     val dsl = new Http4sDsl[IO] {}
     import dsl._
@@ -75,7 +75,7 @@ object Main extends IOApp {
           // initial command for loading n amount of conversations
           case Msg.LoadConversations(n) =>
             for {
-              _             <- loadedConversationsPerUser.update(_ + (userId -> n))
+              _             <- loadedConvosPerUser.update(_ + (userId -> n))
               convos <- loadPartialConvos
                 .load(userId.trim.toInt, n)
                 .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]"))) // TODO: serialize to Json later
@@ -84,7 +84,7 @@ object Main extends IOApp {
           // new message has been sent from somebody, so we need to update loaded conversations
           case _: Msg.ChatMessage =>
             for {
-              count  <- loadedConversationsPerUser.get.map(_.getOrElse(userId, 10))
+              count  <- loadedConvosPerUser.get.map(_.getOrElse(userId, 10))
               convos <- loadPartialConvos
                 .load(userId.trim.toInt, count)
                 .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]"))) // TODO: serialize to Json later
