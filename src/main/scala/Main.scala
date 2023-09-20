@@ -28,7 +28,7 @@ object Main extends IOApp {
   )
 
   // TODO: inject these into future services later
-  val loadConvos = PartialConversationsRepo.impl
+  val loadPartialConvos = PartialConversationsRepo.impl
   val writeMsg = NewMessageRepo.impl
 
   override def run(args: List[String]): IO[ExitCode] =
@@ -72,18 +72,20 @@ object Main extends IOApp {
       val send = topic
         .subscribe(maxQueued = 10)
         .evalMap {
+          // initial command for loading n amount of conversations
           case Msg.LoadConversations(n) =>
             for {
               _             <- loadedConversationsPerUser.update(_ + (userId -> n))
-              conversations <- loadConvos
+              convos <- loadPartialConvos
                 .load(userId.trim.toInt, n)
                 .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]"))) // TODO: serialize to Json later
-            } yield conversations
+            } yield convos
 
-          case Msg.ChatMessage(id, from, to, msg, timestamp) =>
+          // new message has been sent from somebody, so we need to update loaded conversations
+          case _: Msg.ChatMessage =>
             for {
               count  <- loadedConversationsPerUser.get.map(_.getOrElse(userId, 10))
-              convos <- loadConvos
+              convos <- loadPartialConvos
                 .load(userId.trim.toInt, count)
                 .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]"))) // TODO: serialize to Json later
             } yield convos
@@ -91,11 +93,14 @@ object Main extends IOApp {
       val receive = topic
         .publish
         .compose[Stream[IO, WebSocketFrame]](_.collect {
-        case WebSocketFrame.Text(msg, _) =>
-          // TODO: do safe parsing later
-          val amount = msg.trim.toInt
 
-          Msg.LoadConversations(amount)
+          // from FE we will receive messages about how many convos should we load, based on user scrolling behaviour
+          case WebSocketFrame.Text(msg, _) =>
+          // TODO: do safe parsing later
+            val amount = msg.trim.toInt
+
+            // publish to the Topic
+            Msg.LoadConversations(amount)
       })
 
       wsb.build(
@@ -119,8 +124,8 @@ object Main extends IOApp {
           .subscribe(maxQueued = 10)
           .collect {
             // collect only messages for which `fromUserId` and `toUserId` can be exchanged, meaning that
-            // if 1 texts msg to 3 it must only be forwarded to 3 and vice versa, back and forth.
-
+            // if 1 texts msg to 3 it must only be forwarded to 3 and not 2 for example.
+            // P.S haven't thought about multi user chat functionality yet.
             case Msg.ChatMessage(_, `fromUserId` | `toUserId`, `toUserId` | `fromUserId`, txt, _) =>
               WebSocketFrame.Text(txt)
           }
@@ -128,6 +133,7 @@ object Main extends IOApp {
           .publish
           .compose[Stream[IO, WebSocketFrame]](_.evalMap { case WebSocketFrame.Text(msg, _) =>
 
+        // upon receiving a new message from user, we create a record in database and publish ChatMessage in Topic
         for {
           newMessageId <- writeMsg.add(NewMessage(msg.stripLineEnd, conversationId, fromUserId, toUserId, Instant.now()))
         } yield Msg.ChatMessage(newMessageId, fromUserId, toUserId, msg.stripLineEnd, Instant.now())
