@@ -12,7 +12,8 @@ trait MessageWithoutIdRepo {
 }
 
 object MessageWithoutIdRepo {
-  def impl(xa: Transactor[IO]): MessageWithoutIdRepo = new MessageWithoutIdRepo {
+
+  def of(xa: Transactor[IO]): MessageWithoutIdRepo = new MessageWithoutIdRepo {
     override def write(msg: MessageWithoutId): IO[Int] = {
       val dbAction = sql"""
              WITH inserted_message AS (

@@ -11,7 +11,6 @@ import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.websocket.WebSocketBuilder2
 import org.http4s.websocket.WebSocketFrame
 import doobie._
-import doobie.implicits._
 import ws.Msg
 
 import java.time.Instant
@@ -34,7 +33,7 @@ import scala.collection.concurrent.TrieMap
 
 object Main extends IOApp {
 
-  val xa: Transactor[IO] = Transactor.fromDriverManager[IO](
+  val transactor: Transactor[IO] = Transactor.fromDriverManager[IO](
     driver = "org.postgresql.Driver",
     url = "jdbc:postgresql://localhost:5432/chat",
     user = "aghurtchumelia",
@@ -42,15 +41,13 @@ object Main extends IOApp {
     logHandler = None,
   )
 
-  val loadConvos = PartialConversationsRepo.impl(xa)
-  val writeMsg = MessageWithoutIdRepo.impl(xa)
+  val loadConvos = PartialConversationsRepo.of(transactor)
+  val writeMsg = MessageWithoutIdRepo.of(transactor)
 
   override def run(args: List[String]): IO[ExitCode] =
     for {
       topic                      <- Topic[IO, Msg]
-      loadedConversationsPerUser <- IO.ref(
-        TrieMap.empty[String, Int],
-      ) // map(user id -> number of loaded conversations)
+      loadedConversationsPerUser <- IO.ref(TrieMap.empty[String, Int]) // map(user id -> number of loaded conversations)
       _                          <- EmberServerBuilder
         .default[IO]
         .withHost(host"localhost")
@@ -81,7 +78,7 @@ object Main extends IOApp {
     // 10 = last 10 convos
     // and so on
     HttpRoutes.of[IO] { case GET -> Root / "conversations" / userId =>
-      val subscribeThenProcessThenSendToWebSocket: Stream[IO, WebSocketFrame.Text] = topic
+      val send = topic
         .subscribe(maxQueued = 10)
         .evalMap {
           case Msg.LoadConversations(n) =>
@@ -100,17 +97,20 @@ object Main extends IOApp {
                 .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]"))) // TODO: serialize to Json later
             } yield convos
         }
+      val receive = topic
+        .publish
+        .compose[Stream[IO, WebSocketFrame]](_.collect {
+        case WebSocketFrame.Text(msg, _) =>
+          val amount = msg.trim.toInt
+
+          Msg.LoadConversations(amount)
+      })
 
       wsb.build(
         // Outgoing stream of WebSocket messages to send to the client
-        send = subscribeThenProcessThenSendToWebSocket,
-        // Sink, where the incoming WebSocket messages from the client are pushed to
-        receive = topic.publish.compose[Stream[IO, WebSocketFrame]](_.collect {
-          case WebSocketFrame.Text(msg, _) =>
-            val amount = msg.trim.toInt
-
-            Msg.LoadConversations(amount)
-        }),
+        send = send,
+        // Incoming stream of Websocket messages from the client
+        receive = receive,
       )
     }
   }
@@ -123,15 +123,18 @@ object Main extends IOApp {
     import dsl._
     HttpRoutes.of[IO] {
       case GET -> Root / "from" / fromUserId / "to" / toUserId / "conversation" / conversationId =>
-        val consumeThenProcessThenSendToWebSocket: Stream[IO, WebSocketFrame.Text] =
-          topic
+        val send = topic
           .subscribe(maxQueued = 10)
           .collect {
-            case msg @ Msg.ChatMessage(id, from, to, txt, timestamp) =>
-              WebSocketFrame.Text(msg.toString)
+            case Msg.ChatMessage(_, `fromUserId`, `toUserId`, txt, _) =>
+              WebSocketFrame.Text(txt)
+            case Msg.ChatMessage(_, `toUserId`, `fromUserId`, txt, _) =>
+              WebSocketFrame.Text(txt)
           }
+        val receive = topic
+          .publish
+          .compose[Stream[IO, WebSocketFrame]](_.evalMap { case WebSocketFrame.Text(msg, _) =>
 
-      val receiveThenProcessThenPublish = topic.publish.compose[Stream[IO, WebSocketFrame]](_.evalMap { case WebSocketFrame.Text(msg, _) =>
         for {
           newMessageId <- writeMsg.write(MessageWithoutId(msg.stripLineEnd, conversationId, fromUserId, toUserId, Instant.now()))
         } yield Msg.ChatMessage(newMessageId, fromUserId, toUserId, msg.stripLineEnd, Instant.now())
@@ -139,9 +142,9 @@ object Main extends IOApp {
 
       wsb.build(
         // Outgoing stream of WebSocket messages to send to the client
-        send = consumeThenProcessThenSendToWebSocket,
-        // Sink, where the incoming WebSocket messages from the client are pushed to
-        receive = receiveThenProcessThenPublish
+        send = send,
+        // Incoming stream of Websocket messages from the client
+        receive = receive
       )
     }
   }

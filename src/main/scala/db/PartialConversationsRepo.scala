@@ -14,7 +14,7 @@ trait PartialConversationsRepo {
 }
 
 object PartialConversationsRepo {
-  def impl(xa: Transactor[IO]): PartialConversationsRepo = new PartialConversationsRepo {
+  def of(transactor: Transactor[IO]): PartialConversationsRepo = new PartialConversationsRepo {
     override def load(userId: Int, lastN: Int): IO[List[PartialConversation]] = {
       val query =
         sql"""
@@ -22,7 +22,7 @@ object PartialConversationsRepo {
         FROM (
           SELECT DISTINCT ON (conversation_id) conversation_id, message_id
           FROM message
-          WHERE fromuserid = 3 OR touserid = 3
+          WHERE fromuserid = $userId OR touserid = $userId
           ORDER BY conversation_id, written_at DESC
         ) AS last_messages
         JOIN conversation c ON last_messages.conversation_id = c.conversation_id
@@ -31,7 +31,7 @@ object PartialConversationsRepo {
         LIMIT $lastN;""".query[PartialConversation]
 
       query.stream.compile.toList
-        .transact(xa)
+        .transact(transactor)
         .flatTap(IO.println)
     }
   }
