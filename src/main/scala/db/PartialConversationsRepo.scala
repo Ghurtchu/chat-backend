@@ -14,7 +14,7 @@ trait PartialConversationsRepo {
 }
 
 object PartialConversationsRepo {
-  def of(transactor: Transactor[IO]): PartialConversationsRepo = new PartialConversationsRepo {
+  def impl(implicit transactor: Transactor[IO]): PartialConversationsRepo = new PartialConversationsRepo {
     override def load(userId: Int, lastN: Int): IO[List[PartialConversation]] = {
       val query =
         sql"""

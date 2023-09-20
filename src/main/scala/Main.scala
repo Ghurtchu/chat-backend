@@ -1,8 +1,8 @@
 import cats.effect.{ExitCode, IO, IOApp, Ref}
 import cats.implicits.toSemigroupKOps
 import com.comcast.ip4s.IpLiteralSyntax
-import db.{MessageWithoutIdRepo, PartialConversationsRepo}
-import domain.MessageWithoutId
+import db.{NewMessageRepo, PartialConversationsRepo}
+import domain.NewMessage
 import fs2.concurrent.Topic
 import fs2.Stream
 import org.http4s.{HttpApp, HttpRoutes}
@@ -16,24 +16,10 @@ import ws.Msg
 import java.time.Instant
 import scala.collection.concurrent.TrieMap
 
-// psql -h localhost -p 5432 -U aghurtchumelia -d chat
-// db-name: chat
-// user: aghurtchumelia
-// pass: password
-
-/** WITH LastMessageConversations AS ( SELECT uc.user_id, c.conversation_id, c.conversation_name,
-  * MAX(m.written_at) AS last_message_written_at FROM user_conversation uc JOIN conversation c ON
-  * uc.conversation_id = c.conversation_id JOIN message m ON c.conversation_id = m.conversation_id WHERE
-  * uc.user_id = 1 -- Replace :user_id with the actual user's ID GROUP BY uc.user_id, c.conversation_id,
-  * c.conversation_name ) SELECT LMC.user_id, LMC.conversation_id, LMC.conversation_name, M.message_content AS
-  * last_message_content, LMC.last_message_written_at AS last_message_written_at FROM LastMessageConversations
-  * LMC JOIN message M ON LMC.conversation_id = M.conversation_id AND LMC.last_message_written_at =
-  * M.written_at ORDER BY LMC.last_message_written_at DESC LIMIT 1;
-  */
-
 object Main extends IOApp {
 
-  val transactor: Transactor[IO] = Transactor.fromDriverManager[IO](
+  // TODO: parse params from config
+  implicit val transactor: Transactor[IO] = Transactor.fromDriverManager[IO](
     driver = "org.postgresql.Driver",
     url = "jdbc:postgresql://localhost:5432/chat",
     user = "aghurtchumelia",
@@ -41,13 +27,18 @@ object Main extends IOApp {
     logHandler = None,
   )
 
-  val loadConvos = PartialConversationsRepo.of(transactor)
-  val writeMsg = MessageWithoutIdRepo.of(transactor)
+  // TODO: inject these into future services later
+  val loadConvos = PartialConversationsRepo.impl
+  val writeMsg = NewMessageRepo.impl
 
   override def run(args: List[String]): IO[ExitCode] =
     for {
+      // global topic where users will publish and subscribe Msg subtypes
       topic                      <- Topic[IO, Msg]
+
+      // stores how many conversations are loaded for each user
       loadedConversationsPerUser <- IO.ref(TrieMap.empty[String, Int]) // map(user id -> number of loaded conversations)
+
       _                          <- EmberServerBuilder
         .default[IO]
         .withHost(host"localhost")
@@ -73,9 +64,9 @@ object Main extends IOApp {
     import dsl._
 
     // set up ws connection = ws://host:port/chat/{userId}
-    // and load n amount of conversations
-    // 2 = last 2 convos
-    // 10 = last 10 convos
+    // and load n amount of partial conversations for UI
+    // 2 = last 2 partial convos
+    // 10 = last 10 partial convos
     // and so on
     HttpRoutes.of[IO] { case GET -> Root / "conversations" / userId =>
       val send = topic
@@ -101,6 +92,7 @@ object Main extends IOApp {
         .publish
         .compose[Stream[IO, WebSocketFrame]](_.collect {
         case WebSocketFrame.Text(msg, _) =>
+          // TODO: do safe parsing later
           val amount = msg.trim.toInt
 
           Msg.LoadConversations(amount)
@@ -126,9 +118,10 @@ object Main extends IOApp {
         val send = topic
           .subscribe(maxQueued = 10)
           .collect {
-            case Msg.ChatMessage(_, `fromUserId`, `toUserId`, txt, _) =>
-              WebSocketFrame.Text(txt)
-            case Msg.ChatMessage(_, `toUserId`, `fromUserId`, txt, _) =>
+            // collect only messages for which `fromUserId` and `toUserId` can be exchanged, meaning that
+            // if 1 texts msg to 3 it must only be forwarded to 3 and vice versa, back and forth.
+
+            case Msg.ChatMessage(_, `fromUserId` | `toUserId`, `toUserId` | `fromUserId`, txt, _) =>
               WebSocketFrame.Text(txt)
           }
         val receive = topic
@@ -136,7 +129,7 @@ object Main extends IOApp {
           .compose[Stream[IO, WebSocketFrame]](_.evalMap { case WebSocketFrame.Text(msg, _) =>
 
         for {
-          newMessageId <- writeMsg.write(MessageWithoutId(msg.stripLineEnd, conversationId, fromUserId, toUserId, Instant.now()))
+          newMessageId <- writeMsg.add(NewMessage(msg.stripLineEnd, conversationId, fromUserId, toUserId, Instant.now()))
         } yield Msg.ChatMessage(newMessageId, fromUserId, toUserId, msg.stripLineEnd, Instant.now())
       })
 

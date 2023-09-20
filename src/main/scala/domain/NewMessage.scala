@@ -2,7 +2,11 @@ package domain
 
 import java.time.Instant
 
-case class MessageWithoutId(
+/**
+ * message without id
+ * will be used to store new records in db
+ */
+case class NewMessage(
   text: String,
   conversationId: String,
   fromUserId: String,

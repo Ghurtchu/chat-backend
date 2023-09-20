@@ -1,20 +1,23 @@
 package db
 
 import cats.effect.IO
-import domain.MessageWithoutId
+import domain.NewMessage
 import doobie.Transactor
 import doobie.implicits._
 
 import java.time.Instant
 
-trait MessageWithoutIdRepo {
-  def write(msg: MessageWithoutId): IO[Int]
+trait NewMessageRepo {
+
+  /** writes the new record in "message" table
+    */
+  def add(msg: NewMessage): IO[Int]
 }
 
-object MessageWithoutIdRepo {
+object NewMessageRepo {
 
-  def of(xa: Transactor[IO]): MessageWithoutIdRepo = new MessageWithoutIdRepo {
-    override def write(msg: MessageWithoutId): IO[Int] = {
+  def impl(implicit xa: Transactor[IO]): NewMessageRepo = new NewMessageRepo {
+    override def add(msg: NewMessage): IO[Int] = {
       val dbAction = sql"""
              WITH inserted_message AS (
           INSERT INTO message (message_content, conversation_id, fromuserid, touserid, written_at)
