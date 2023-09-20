@@ -1,4 +1,4 @@
-An attempt to implement the persistent chat with the help of PostgreSQL backend.
+An attempt to implement the persistent chat server with the help of PostgreSQL backend.
 
 For now a single user will have two websocket connections to the backend:
 - background WS connection (`ws://localhost:8080/conversations/{userId}`):
