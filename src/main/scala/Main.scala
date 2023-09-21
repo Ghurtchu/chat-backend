@@ -75,7 +75,7 @@ object Main extends IOApp {
           // initial command for loading n amount of conversations
           case Msg.LoadConversations(n) =>
             for {
-              _             <- loadedConvosPerUser.update(_ + (userId -> n))
+              _             <- loadedConvosPerUser.update(_ + (userId -> n)).start.void
               convos <- loadPartialConvos
                 .load(userId.trim.toInt, n)
                 .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]"))) // TODO: serialize to Json later
@@ -123,6 +123,7 @@ object Main extends IOApp {
         val send = topic
           .subscribe(maxQueued = 10)
           .collect {
+
             // collect only messages for which `fromUserId` and `toUserId` can be exchanged, meaning that
             // if 1 texts msg to 3 it must only be forwarded to 3 and not 2 for example.
             // P.S haven't thought about multi user chat functionality yet.

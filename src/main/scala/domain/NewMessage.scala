@@ -6,7 +6,7 @@ import java.time.Instant
  * message without id
  * will be used to store new records in db
  */
-case class NewMessage(
+final case class NewMessage(
   text: String,
   conversationId: String,
   fromUserId: String,

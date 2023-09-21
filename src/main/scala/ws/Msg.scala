@@ -15,5 +15,4 @@ object Msg {
   ) extends Msg
 
   final case class LoadConversations(amount: Int) extends Msg
-
 }
