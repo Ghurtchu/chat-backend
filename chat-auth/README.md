@@ -1,3 +1,0 @@
-# JWT based Authentication server - will handle sign up and login functionalities.
-
-## In progress...
