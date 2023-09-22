@@ -18,12 +18,19 @@ import scala.collection.concurrent.TrieMap
 
 object Main extends IOApp {
 
+  /**
+   * CONTAINER_NAME="chat-postgres"
+   * DB_USER="postgres"
+   * DB_PASSWORD="mysecretpassword"
+   * DB_NAME="mydatabase"
+   */
+
   // TODO: parse params from config
   implicit val transactor: Transactor[IO] = Transactor.fromDriverManager[IO](
     driver = "org.postgresql.Driver",
-    url = "jdbc:postgresql://localhost:5432/chat",
-    user = "aghurtchumelia",
-    password = "password",
+    url = "jdbc:postgresql://localhost:5433/mydatabase",
+    user = "postgres",
+    password = "mysecretpassword",
     logHandler = None,
   )
 
@@ -42,7 +49,7 @@ object Main extends IOApp {
       _ <- EmberServerBuilder
         .default[IO]
         .withHost(host"localhost")
-        .withPort(port"8080")
+        .withPort(port"9000")
         .withHttpWebSocketApp(httpApp(topic, _, loadedConvosPerUser))
         .build
         .useForever

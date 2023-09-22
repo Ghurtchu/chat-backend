@@ -18,16 +18,18 @@ object PartialConversationsRepo {
     override def load(userId: Int, lastN: Int): IO[List[PartialConversation]] = {
       val query =
         sql"""
-          SELECT c.conversation_id, m.message_content
+        SELECT c.id AS conversation_id, m.text
         FROM (
-          SELECT DISTINCT ON (conversation_id) conversation_id, message_id
-          FROM message
-          WHERE fromuserid = $userId OR touserid = $userId
-          ORDER BY conversation_id, written_at DESC
+          SELECT DISTINCT ON (c.id) c.id AS conversation_id, m.id AS message_id
+          FROM "message" m
+          JOIN "user" u ON m."fromUserId" = u.id OR m."toUserId" = u.id
+          JOIN "conversation" c ON m."conversationId" = c.id
+          WHERE u.id = $userId
+          ORDER BY c.id, m."writtenAt" DESC
         ) AS last_messages
-        JOIN conversation c ON last_messages.conversation_id = c.conversation_id
-        JOIN message m ON last_messages.message_id = m.message_id
-        ORDER BY m.written_at DESC
+        JOIN "conversation" c ON last_messages.conversation_id = c.id
+        JOIN "message" m ON last_messages.message_id = m.id
+        ORDER BY m."writtenAt" DESC
         LIMIT $lastN;""".query[PartialConversation]
 
       query.stream.compile.toList
