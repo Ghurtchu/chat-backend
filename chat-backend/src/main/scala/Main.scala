@@ -44,7 +44,7 @@ object Main extends IOApp {
       _ <- EmberServerBuilder
         .default[IO]
         .withHost(host"localhost")
-        .withPort(port"9000")
+        .withPort(port"8080")
         .withHttpWebSocketApp(httpApp(topic, _, loadedConvosPerUser, loadPartialConvos, writeMsg))
         .build
         .useForever

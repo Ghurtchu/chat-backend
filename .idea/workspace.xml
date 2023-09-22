@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="de3b2b74-2331-452a-9bd4-e5f9e6fbaf0d" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.scalafmt.conf" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/.scalafmt.conf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/build.sbt" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/build.sbt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/init_db.sh" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/init_db.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/project/build.properties" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/project/build.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/resources/application.conf" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/src/main/resources/application.conf" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/Main.scala" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/src/main/scala/Main.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/db/NewMessageRepo.scala" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/src/main/scala/db/NewMessageRepo.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/db/PartialConversationsRepo.scala" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/src/main/scala/db/PartialConversationsRepo.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/domain/Config.scala" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/src/main/scala/domain/Config.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/domain/Conversation.scala" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/src/main/scala/domain/Conversation.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/domain/Message.scala" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/src/main/scala/domain/Message.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/domain/NewMessage.scala" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/src/main/scala/domain/NewMessage.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/domain/PartialConversation.scala" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/src/main/scala/domain/PartialConversation.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/domain/User.scala" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/src/main/scala/domain/User.scala" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/scala/ws/Msg.scala" beforeDir="false" afterPath="$PROJECT_DIR$/chat-backend/src/main/scala/ws/Msg.scala" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectCodeStyleSettingsMigration">
+    <option name="version" value="2" />
+  </component>
+  <component name="ProjectId" id="2VkEHZHlGiUlriHuVJX1f7QVFI7" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;
+  }
+}</component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/chat-backend" />
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
+  <component name="RunManager">
+    <configuration name="Main" type="Application" factoryName="Application" temporary="true">
+      <option name="MAIN_CLASS_NAME" value="Main" />
+      <module name="ChatServer" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.Main" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="de3b2b74-2331-452a-9bd4-e5f9e6fbaf0d" name="Changes" comment="" />
+      <created>1695371591109</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1695371591109</updated>
+    </task>
+    <servers />
+  </component>
+</project>
