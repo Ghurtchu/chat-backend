@@ -1,10 +1,20 @@
 #!/bin/bash
 
 # Define PostgreSQL container name and credentials
-CONTAINER_NAME="chat-postgres"
-DB_USER="postgres"
-DB_PASSWORD="mysecretpassword"
-DB_NAME="mydatabase"
+
+CONFIG_FILE="src/main/resources/config.conf"
+
+CONTAINER_NAME=$(grep '^CONTAINER_NAME=' "$CONFIG_FILE" | cut -d'=' -f2)
+DB_USER=$(grep '^DB_USER=' "$CONFIG_FILE" | cut -d'=' -f2)
+DB_PASSWORD=$(grep '^DB_PASSWORD=' "$CONFIG_FILE" | cut -d'=' -f2)
+DB_NAME=$(grep '^DB_NAME=' "$CONFIG_FILE" | cut -d'=' -f2)
+DB_PORT=$(grep '^DB_PORT=' "$CONFIG_FILE" | cut -d'=' -f2)
+DB_HOST=$(grep '^DB_HOST=' "$CONFIG_FILE" | cut -d'=' -f2)
+
+echo "DB_HOST: $DB_HOST"
+echo "DB_PORT: $DB_PORT"
+echo "DB_USER: $DB_USER"
+echo "DB_PASSWORD: $DB_PASSWORD"
 
 echo "Step 1: Check if the PostgreSQL container is running"
 if ! docker ps | grep -q "$CONTAINER_NAME"; then
