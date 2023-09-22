@@ -39,4 +39,12 @@ You should see an entry for the chat-postgres container in the list.
 ```
 If you can't execute this runnable, give your user the permission (depends which shell are you using)
 
-## Step 5: IN PROGRESS
+## Step 5: Start server
+```bash
+sbt run
+```
+
+## Step 6: Use your favorite WS tool for testing the functionality
+```bash
+# in progress :)
+```
