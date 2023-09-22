@@ -31,7 +31,7 @@ object Main extends IOApp {
           password = cfg.dbPassword,
           logHandler = None,
         )
-      _ <- tryConnectingToDatabase(transactor)
+      _ <- pingDatabase(transactor)
       loadPartialConvos = PartialConversationsRepo.impl(transactor)
       writeMsg = NewMessageRepo.impl(transactor)
 
@@ -50,7 +50,7 @@ object Main extends IOApp {
         .useForever
     } yield ExitCode.Success
 
-  private def tryConnectingToDatabase(transactor: Transactor[IO]): IO[Unit] =
+  private def pingDatabase(transactor: Transactor[IO]): IO[Unit] =
     sql"SELECT 1"
       .query[Int]
       .unique
