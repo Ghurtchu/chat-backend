@@ -10,7 +10,8 @@ import org.http4s.dsl.Http4sDsl
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.websocket.WebSocketBuilder2
 import org.http4s.websocket.WebSocketFrame
-import doobie._
+import doobie.implicits._
+import doobie.util.transactor.Transactor
 import pureconfig._
 import pureconfig.generic.auto._
 import ws.Msg
@@ -30,6 +31,7 @@ object Main extends IOApp {
           password = cfg.dbPassword,
           logHandler = None,
         )
+      _ <- checkDatabaseHealth(transactor)
       loadPartialConvos = PartialConversationsRepo.impl(transactor)
       writeMsg = NewMessageRepo.impl(transactor)
 
@@ -47,6 +49,13 @@ object Main extends IOApp {
         .build
         .useForever
     } yield ExitCode.Success
+
+  private def checkDatabaseHealth(transactor: Transactor[IO]): IO[Unit] =
+    sql"SELECT 1"
+      .query[Int]
+      .unique
+      .transact(transactor)
+      .flatMap(_ => IO.println("Successfully connected to database"))
 
   private def httpApp(
     topic: Topic[IO, Msg],
