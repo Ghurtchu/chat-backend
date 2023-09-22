@@ -2,7 +2,7 @@ import cats.effect.{ExitCode, IO, IOApp, Ref}
 import cats.implicits.toSemigroupKOps
 import com.comcast.ip4s.IpLiteralSyntax
 import db.{NewMessageRepo, PartialConversationsRepo}
-import domain.NewMessage
+import domain.{Config, NewMessage}
 import fs2.concurrent.Topic
 import fs2.Stream
 import org.http4s.{HttpApp, HttpRoutes}
@@ -11,6 +11,8 @@ import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.websocket.WebSocketBuilder2
 import org.http4s.websocket.WebSocketFrame
 import doobie._
+import pureconfig._
+import pureconfig.generic.auto._
 import ws.Msg
 
 import java.time.Instant
@@ -18,28 +20,25 @@ import scala.collection.concurrent.TrieMap
 
 object Main extends IOApp {
 
-  /**
-   * CONTAINER_NAME="chat-postgres"
-   * DB_USER="postgres"
-   * DB_PASSWORD="mysecretpassword"
-   * DB_NAME="mydatabase"
-   */
-
-  // TODO: parse params from config
-  implicit val transactor: Transactor[IO] = Transactor.fromDriverManager[IO](
-    driver = "org.postgresql.Driver",
-    url = "jdbc:postgresql://localhost:5433/mydatabase",
-    user = "postgres",
-    password = "mysecretpassword",
-    logHandler = None,
-  )
-
-  // TODO: inject these into future services later
-  val loadPartialConvos = PartialConversationsRepo.impl
-  val writeMsg = NewMessageRepo.impl
-
   override def run(args: List[String]): IO[ExitCode] =
     for {
+      cfg <- IO(ConfigSource.default.loadOrThrow[Config])
+      url = cfg.dbUrlPrefix
+        .concat(cfg.dbHost)
+        .concat(":")
+        .concat(cfg.dbPort.toString)
+        .concat("/")
+        .concat(cfg.dbName)
+      transactor = Transactor.fromDriverManager[IO](
+          driver = cfg.dbDriver,
+          url = url,
+          user = cfg.dbUser,
+          password = cfg.dbPassword,
+          logHandler = None,
+        )
+      loadPartialConvos = PartialConversationsRepo.impl(transactor)
+      writeMsg = NewMessageRepo.impl(transactor)
+
       // global topic where users will publish and subscribe Msg subtypes
       topic <- Topic[IO, Msg]
 
@@ -50,7 +49,7 @@ object Main extends IOApp {
         .default[IO]
         .withHost(host"localhost")
         .withPort(port"9000")
-        .withHttpWebSocketApp(httpApp(topic, _, loadedConvosPerUser))
+        .withHttpWebSocketApp(httpApp(topic, _, loadedConvosPerUser, loadPartialConvos, writeMsg))
         .build
         .useForever
     } yield ExitCode.Success
@@ -59,13 +58,16 @@ object Main extends IOApp {
     topic: Topic[IO, Msg],
     wsb: WebSocketBuilder2[IO],
     loadedConvosPerUser: Ref[IO, TrieMap[String, Int]],
+    loadPartialConvos: PartialConversationsRepo,
+    writeMsg: NewMessageRepo
   ): HttpApp[IO] =
-    (conversations(topic, wsb, loadedConvosPerUser) <+> conversation(topic, wsb)).orNotFound
+    (conversations(topic, wsb, loadedConvosPerUser, loadPartialConvos) <+> conversation(topic, wsb, writeMsg)).orNotFound
 
   private def conversations(
     topic: Topic[IO, Msg],
     wsb: WebSocketBuilder2[IO],
     loadedConvosPerUser: Ref[IO, TrieMap[String, Int]],
+    loadPartialConvos: PartialConversationsRepo,
   ): HttpRoutes[IO] = {
     val dsl = new Http4sDsl[IO] {}
     import dsl._
@@ -82,7 +84,7 @@ object Main extends IOApp {
           // initial command for loading n amount of conversations
           case Msg.LoadConversations(n) =>
             for {
-              _             <- loadedConvosPerUser.update(_ + (userId -> n)).start.void
+              _             <- loadedConvosPerUser.update(_ + (userId -> n))
               convos <- loadPartialConvos
                 .load(userId.trim.toInt, n)
                 .map(convos => WebSocketFrame.Text(convos.mkString("[", ",", "]"))) // TODO: serialize to Json later
@@ -110,7 +112,8 @@ object Main extends IOApp {
             Msg.LoadConversations(amount)
       })
 
-      wsb.build(
+      wsb
+        .build(
         // Outgoing stream of WebSocket messages to send to the client
         send = send,
         // Incoming stream of Websocket messages from the client
@@ -121,7 +124,8 @@ object Main extends IOApp {
 
   private def conversation(
     topic: Topic[IO, Msg],
-    wsb: WebSocketBuilder2[IO]
+    wsb: WebSocketBuilder2[IO],
+    writeMsg: NewMessageRepo,
   ): HttpRoutes[IO] = {
     val dsl = new Http4sDsl[IO] {}
     import dsl._
@@ -143,7 +147,7 @@ object Main extends IOApp {
 
         // upon receiving a new message from user, we create a record in database and publish ChatMessage in Topic
         for {
-          newMessageId <- writeMsg.add(NewMessage(msg.stripLineEnd, conversationId, fromUserId, toUserId, Instant.now()))
+          newMessageId <- writeMsg.add(NewMessage(msg.stripLineEnd, conversationId.toLong, fromUserId.toLong, toUserId.toLong, Instant.now()))
         } yield Msg.ChatMessage(newMessageId, fromUserId, toUserId, msg.stripLineEnd, Instant.now())
       })
 

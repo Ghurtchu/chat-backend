@@ -2,14 +2,14 @@
 
 # Define PostgreSQL container name and credentials
 
-CONFIG_FILE="src/main/resources/config.conf"
+CONFIG_FILE="src/main/resources/application.conf"
 
-CONTAINER_NAME=$(grep '^CONTAINER_NAME=' "$CONFIG_FILE" | cut -d'=' -f2)
-DB_USER=$(grep '^DB_USER=' "$CONFIG_FILE" | cut -d'=' -f2)
-DB_PASSWORD=$(grep '^DB_PASSWORD=' "$CONFIG_FILE" | cut -d'=' -f2)
-DB_NAME=$(grep '^DB_NAME=' "$CONFIG_FILE" | cut -d'=' -f2)
-DB_PORT=$(grep '^DB_PORT=' "$CONFIG_FILE" | cut -d'=' -f2)
-DB_HOST=$(grep '^DB_HOST=' "$CONFIG_FILE" | cut -d'=' -f2)
+CONTAINER_NAME=$(grep '^container-name=' "$CONFIG_FILE" | cut -d'=' -f2)
+DB_USER=$(grep '^db-user=' "$CONFIG_FILE" | cut -d'=' -f2)
+DB_PASSWORD=$(grep '^db-password=' "$CONFIG_FILE" | cut -d'=' -f2)
+DB_NAME=$(grep '^db-name=' "$CONFIG_FILE" | cut -d'=' -f2)
+DB_PORT=$(grep '^db-port=' "$CONFIG_FILE" | cut -d'=' -f2)
+DB_HOST=$(grep '^db-host=' "$CONFIG_FILE" | cut -d'=' -f2)
 
 echo "DB_HOST: $DB_HOST"
 echo "DB_PORT: $DB_PORT"
@@ -100,44 +100,44 @@ VALUES
 -- Sample messages for Conversation 1
 INSERT INTO "message" ("text", "conversationId", "fromUserId", "toUserId", "writtenAt")
 VALUES
-    ('Hello there!', 1, 1, 2, '2023-09-22 10:00:00'),
-    ('Hi! How are you?', 1, 2, 1, '2023-09-22 10:05:00'),
-    ('Doing well, thanks!', 1, 1, 2, '2023-09-22 10:10:00'),
-    ('What have you been up to?', 1, 1, 2, '2023-09-22 10:15:00'),
-    ('Not much, just working.', 1, 2, 1, '2023-09-22 10:20:00'),
-    ('That sounds busy!', 1, 1, 2, '2023-09-22 10:25:00'),
-    ('Yeah, it is!', 1, 2, 1, '2023-09-22 10:30:00'),
-    ('How is everyone?', 1, 1, 2, '2023-09-22 10:35:00'),
-    ('Good, thanks!', 1, 2, 1, '2023-09-22 10:40:00'),
-    ('Doing well here too!', 1, 3, 4, '2023-09-22 10:45:00');
+    ('Hello there!', 1, 1, 2, '2023-09-21 10:00:00'),
+    ('Hi! How are you?', 1, 2, 1, '2023-09-21 10:05:00'),
+    ('Doing well, thanks!', 1, 1, 2, '2023-09-21 10:10:00'),
+    ('What have you been up to?', 1, 1, 2, '2023-09-21 10:15:00'),
+    ('Not much, just working.', 1, 2, 1, '2023-09-21 10:20:00'),
+    ('That sounds busy!', 1, 1, 2, '2023-09-21 10:25:00'),
+    ('Yeah, it is!', 1, 2, 1, '2023-09-21 10:30:00'),
+    ('How is everyone?', 1, 1, 2, '2023-09-21 10:35:00'),
+    ('Good, thanks!', 1, 2, 1, '2023-09-21 10:40:00'),
+    ('Doing well here too!', 1, 3, 4, '2023-09-21 10:45:00');
 
 -- Sample messages for Conversation 2
 INSERT INTO "message" ("text", "conversationId", "fromUserId", "toUserId", "writtenAt")
 VALUES
-    ('This is a private message.', 2, 3, 4, '2023-09-22 11:00:00'),
-    ('Another private message.', 2, 4, 3, '2023-09-22 11:05:00'),
-    ('Let us discuss our project.', 2, 5, 6, '2023-09-22 11:10:00'),
-    ('Sure, I have some ideas.', 2, 6, 5, '2023-09-22 11:15:00'),
-    ('We can meet tomorrow.', 2, 3, 4, '2023-09-22 11:20:00'),
-    ('That works for me.', 2, 4, 3, '2023-09-22 11:25:00'),
-    ('How about 2 PM?', 2, 5, 6, '2023-09-22 11:30:00'),
-    ('Sounds good!', 2, 6, 5, '2023-09-22 11:35:00'),
-    ('Greetings from Conversation 2.', 2, 5, 6, '2023-09-22 11:40:00'),
-    ('Hello there again!', 2, 6, 5, '2023-09-22 11:45:00');
+    ('This is a private message.', 2, 3, 4, '2023-09-21 11:00:00'),
+    ('Another private message.', 2, 4, 3, '2023-09-21 11:05:00'),
+    ('Let us discuss our project.', 2, 5, 6, '2023-09-21 11:10:00'),
+    ('Sure, I have some ideas.', 2, 6, 5, '2023-09-21 11:15:00'),
+    ('We can meet tomorrow.', 2, 3, 4, '2023-09-21 11:20:00'),
+    ('That works for me.', 2, 4, 3, '2023-09-21 11:25:00'),
+    ('How about 2 PM?', 2, 5, 6, '2023-09-21 11:30:00'),
+    ('Sounds good!', 2, 6, 5, '2023-09-21 11:35:00'),
+    ('Greetings from Conversation 2.', 2, 5, 6, '2023-09-21 11:40:00'),
+    ('Hello there again!', 2, 6, 5, '2023-09-21 11:45:00');
 
 -- Sample messages for Conversation 3
 INSERT INTO "message" ("text", "conversationId", "fromUserId", "toUserId", "writtenAt")
 VALUES
-    ('Greetings from Conversation 3.', 3, 5, 6, '2023-09-22 12:00:00'),
-    ('Hello there!', 3, 6, 5, '2023-09-22 12:05:00'),
-    ('How is it going?', 3, 5, 6, '2023-09-22 12:10:00'),
-    ('Doing well!', 3, 6, 5, '2023-09-22 12:15:00'),
-    ('What is new?', 3, 5, 6, '2023-09-22 12:20:00'),
-    ('Not much, just enjoying the day.', 3, 6, 5, '2023-09-22 12:25:00'),
-    ('How about a coffee later?', 3, 5, 6, '2023-09-22 12:30:00'),
-    ('Sure, I would love that!', 3, 6, 5, '2023-09-22 12:35:00'),
-    ('Meet you at the usual place?', 3, 5, 6, '2023-09-22 12:40:00'),
-    ('Sounds like a plan!', 3, 6, 5, '2023-09-22 12:45:00');
+    ('Greetings from Conversation 3.', 3, 5, 6, '2023-09-21 12:00:00'),
+    ('Hello there!', 3, 6, 5, '2023-09-21 12:05:00'),
+    ('How is it going?', 3, 5, 6, '2023-09-21 12:10:00'),
+    ('Doing well!', 3, 6, 5, '2023-09-21 12:15:00'),
+    ('What is new?', 3, 5, 6, '2023-09-21 12:20:00'),
+    ('Not much, just enjoying the day.', 3, 6, 5, '2023-09-21 12:25:00'),
+    ('How about a coffee later?', 3, 5, 6, '2023-09-21 12:30:00'),
+    ('Sure, I would love that!', 3, 6, 5, '2023-09-21 12:35:00'),
+    ('Meet you at the usual place?', 3, 5, 6, '2023-09-21 12:40:00'),
+    ('Sounds like a plan!', 3, 6, 5, '2023-09-21 12:45:00');
 EOF
 
 if [ $? -eq 0 ]; then

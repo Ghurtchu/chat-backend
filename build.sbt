@@ -15,7 +15,7 @@ lazy val root = (project in file("."))
       "io.circe" %% "circe-generic" % "0.14.5",
       "org.tpolecat" %% "doobie-core"      % "1.0.0-RC4",
       "org.tpolecat" %% "doobie-postgres"  % "1.0.0-RC4", // Postgres driver 42.6.0 + type mappings.
-
+      "com.github.pureconfig" %% "pureconfig" % "0.17.4"
     ),
     scalacOptions ++= Seq(
       "-unchecked",

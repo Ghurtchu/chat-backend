@@ -21,12 +21,12 @@ object NewMessageRepo {
       val dbAction = sql"""
        WITH inserted_message AS (
           INSERT INTO message (text, "conversationId", "fromUserId", "toUserId", "writtenAt")
-          VALUES ('hey', 1, 1, 2, '2023-09-22 14:46:00.000 +0200')
+          VALUES (${msg.text}, ${msg.conversationId}, ${msg.fromUserId}, ${msg.toUserId}, ${msg.writtenAt.toString}::timestamp)
           RETURNING id
         )
         SELECT id FROM inserted_message;""".query[Int].unique
 
       dbAction.transact(xa)
-    }
+    }.flatTap(IO.println)
   }
 }

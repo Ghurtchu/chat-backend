@@ -8,8 +8,8 @@ import java.time.Instant
  */
 final case class NewMessage(
   text: String,
-  conversationId: String,
-  fromUserId: String,
-  toUserId: String,
+  conversationId: Long,
+  fromUserId: Long,
+  toUserId: Long,
   writtenAt: Instant,
 )
