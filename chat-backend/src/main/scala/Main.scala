@@ -47,7 +47,7 @@ object Main extends IOApp {
           Host.fromString(cfg.backendHost),
           Port.fromInt(cfg.backendPort)
         ).tupled
-          .toRight(new RuntimeException())
+          .toRight(InvalidBackendConfiguration)
       }
 
       (host, port) = (hp._1, hp._2)
