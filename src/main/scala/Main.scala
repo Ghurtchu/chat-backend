@@ -23,15 +23,9 @@ object Main extends IOApp {
   override def run(args: List[String]): IO[ExitCode] =
     for {
       cfg <- IO(ConfigSource.default.loadOrThrow[Config])
-      url = cfg.dbUrlPrefix
-        .concat(cfg.dbHost)
-        .concat(":")
-        .concat(cfg.dbPort.toString)
-        .concat("/")
-        .concat(cfg.dbName)
       transactor = Transactor.fromDriverManager[IO](
           driver = cfg.dbDriver,
-          url = url,
+          url = cfg.dbUrl,
           user = cfg.dbUser,
           password = cfg.dbPassword,
           logHandler = None,

@@ -8,5 +8,5 @@ final case class Config(
   dbPort: Int,
   dbHost: String,
   dbDriver: String,
-  dbUrlPrefix: String
+  dbUrl: String,
 )
