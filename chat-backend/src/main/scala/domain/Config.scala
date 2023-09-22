@@ -9,4 +9,6 @@ final case class Config(
   dbHost: String,
   dbDriver: String,
   dbUrl: String,
+  backendHost: String,
+  backendPort: Int
 )

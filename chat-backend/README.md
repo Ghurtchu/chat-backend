@@ -19,7 +19,7 @@ Clone the GitHub repository
 
 ```bash
 git clone https://github.com/Ghurtchu/msgFlow.git
-cd msgFlow
+cd msgFlow/chat-backend
 ```
 
 ## Step 2: Start PostgreSQL with Docker
@@ -47,12 +47,12 @@ sbt run
 ## Step 6: Use your favorite WS tool for testing the functionality
 ```bash
 # 1 loading convos
-websocat ws://0.0.0.0:9000/conversations/1
+websocat ws://0.0.0.0:8080/conversations/1
 # send data such as 5, 10 or any number which will load last N amount of convos
 
 # 2 chat
-websocat ws://0.0.0.0:9000/from/1/to/2/conversation/1 # open WS connection for user A
-websocat ws://0.0.0.0:9000/from/2/to/1/conversation/1 # open WS connection for user B
+websocat ws://0.0.0.0:8080/from/1/to/2/conversation/1 # open WS connection for user A
+websocat ws://0.0.0.0:8080/from/2/to/1/conversation/1 # open WS connection for user B
 # exchange messages
 # periodically check websocat ws://0.0.0.0:9000/conversations/1 which will be updated with latest messages
 ```

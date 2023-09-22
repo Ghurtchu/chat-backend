@@ -1,6 +1,6 @@
 import cats.effect.{ExitCode, IO, IOApp, Ref}
-import cats.implicits.toSemigroupKOps
-import com.comcast.ip4s.IpLiteralSyntax
+import cats.implicits.{catsSyntaxTuple2Semigroupal, toSemigroupKOps}
+import com.comcast.ip4s.{Host, IpLiteralSyntax, Port}
 import db.{NewMessageRepo, PartialConversationsRepo}
 import domain.{Config, NewMessage}
 import fs2.concurrent.Topic
@@ -12,6 +12,7 @@ import org.http4s.server.websocket.WebSocketBuilder2
 import org.http4s.websocket.WebSocketFrame
 import doobie.implicits._
 import doobie.util.transactor.Transactor
+import errors.config.InvalidBackendConfiguration
 import pureconfig._
 import pureconfig.generic.auto._
 import ws.Msg
@@ -41,10 +42,20 @@ object Main extends IOApp {
       // stores how many conversations are loaded for each user
       loadedConvosPerUser <- IO.ref(TrieMap.empty[String, Int]) // map(user id -> number of loaded conversations)
 
+      hp <- IO.fromEither {
+        (
+          Host.fromString(cfg.backendHost),
+          Port.fromInt(cfg.backendPort)
+        ).tupled
+          .toRight(new RuntimeException())
+      }
+
+      (host, port) = (hp._1, hp._2)
+
       _ <- EmberServerBuilder
         .default[IO]
-        .withHost(host"localhost")
-        .withPort(port"8080")
+        .withHost(host)
+        .withPort(port)
         .withHttpWebSocketApp(httpApp(topic, _, loadedConvosPerUser, loadPartialConvos, writeMsg))
         .build
         .useForever
