@@ -1,35 +1,23 @@
-package com.arevadze;
+package com.chatauth.verticles;
 
+import com.chatauth.handlers.AuthorizationHandler;
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.Vertx;
+import io.vertx.core.Handler;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
-import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 
-public class Main extends AbstractVerticle {
-
-
-  public static void main(String[] args) {
-
-    // Create a Vert.x instance
-    Vertx vertx = Vertx.vertx();
-
-    vertx.deployVerticle(new Main()); // Example AuthVerticle
-  }
-
+public class AuthorizationVerticle extends AbstractVerticle {
   @Override
   public void start() throws Exception {
     HttpServer server = vertx.createHttpServer();
-
+    AuthorizationHandler handler = new AuthorizationHandler();
     // Create a Router to handle routes
     Router router = Router.router(vertx);
-
     // Define a route for POST requests to /auth
     router.route(HttpMethod.GET, "/").handler(ctx -> ctx.response().end("hello"));
-    router.route(HttpMethod.POST, "/auth").handler(this::handleAuth);
-
+    router.route(HttpMethod.GET, "/auth").handler(handler);
     // Set the router as the request handler for the server
     server.requestHandler(router);
 
@@ -42,15 +30,4 @@ public class Main extends AbstractVerticle {
       }
     });
   }
-
-  private void handleAuth(RoutingContext ctx) {
-    var json = ctx.body(); //vitom json
-    var response = ctx.response();
-
-    response.end(JsonObject.of("jwt", "fake jwt response").encode());
-
-  }
-
-
 }
-

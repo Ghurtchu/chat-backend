@@ -32,8 +32,16 @@ dependencies {
   implementation("io.vertx:vertx-core")
   implementation("io.vertx:vertx-web:4.2.1")
   implementation("io.netty:netty-resolver-dns-native-macos:4.1.72.Final:osx-aarch_64")
+  implementation("io.vertx:vertx-jdbc-client:4.4.5")
+  implementation ("javax.persistence:javax.persistence-api:2.2")
+  implementation ("org.hibernate:hibernate-core:5.5.6.Final") // Use the appropriate version
+  implementation ("org.postgresql:postgresql:42.2.24")
+  implementation("org.jetbrains:annotations:24.0.0")
+  compileOnly ("org.projectlombok:lombok:1.18.22") // Use the latest version
+  annotationProcessor ("org.projectlombok:lombok:1.18.22")
   testImplementation("io.vertx:vertx-junit5")
   testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
+
 }
 
 java {

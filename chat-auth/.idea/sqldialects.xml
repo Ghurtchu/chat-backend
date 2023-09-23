@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SqlDialectMappings">
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/1772af96-865b-427f-9a20-aa6019c1138f/console.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/src/main/java/com/chatauth/verticles/JdbcVerticle.java" dialect="PostgreSQL" />
+  </component>
+</project>
