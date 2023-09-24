@@ -5,6 +5,7 @@ import com.chatauth.domain.CreateUser;
 import com.chatauth.verticles.AddUserVerticle;
 import com.chatauth.http.HttpServerVerticle;
 import com.chatauth.verticles.AddUserRepoVerticle;
+import com.chatauth.verticles.CheckUserVerticle;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
@@ -35,6 +36,7 @@ public class Main extends AbstractVerticle {
     vertx.deployVerticle(new HttpServerVerticle());
     vertx.deployVerticle(new AddUserRepoVerticle(jdbcClient));
     vertx.deployVerticle(new AddUserVerticle());
+    vertx.deployVerticle(new CheckUserVerticle(jdbcClient));
   }
 }
 
