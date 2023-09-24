@@ -1,4 +1,4 @@
-package com.chatauth.model;
+package com.chatauth.domain;
 
 // records
 // pattern matching
