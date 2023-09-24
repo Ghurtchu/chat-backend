@@ -33,7 +33,7 @@ public class Main extends AbstractVerticle {
 
     // deploy verticles
     vertx.deployVerticle(new HttpServerVerticle());
-    vertx.deployVerticle(new AddUserRepoVerticle(null));
+    vertx.deployVerticle(new AddUserRepoVerticle(jdbcClient));
     vertx.deployVerticle(new AddUserVerticle());
   }
 }
