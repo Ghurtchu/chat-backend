@@ -2,6 +2,7 @@ package com.chatauth.verticles;
 
 import com.chatauth.domain.CreateUser;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.eventbus.Message;
 import io.vertx.core.json.JsonObject;
 
 /**
@@ -16,6 +17,7 @@ public class AddUserVerticle extends AbstractVerticle {
   @Override
   public void start() {
     var bus = vertx.eventBus();
+                                                // msg from Http layer
     bus.consumer(VerticlePathConstants.ADD_USER, msg -> {
       // pattern matching - unda gavigot ra tipis mesijia
       var body = msg.body();
