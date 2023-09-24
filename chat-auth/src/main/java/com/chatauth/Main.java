@@ -12,7 +12,6 @@ import io.vertx.ext.web.handler.CorsHandler;
 
 public class Main extends AbstractVerticle {
 
-
   public static void main(String[] args) {
     Vertx vertx = Vertx.vertx();
     Router router = Router.router(vertx);
