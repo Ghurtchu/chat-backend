@@ -1,6 +1,6 @@
-package com.arevadze.verticles;
+package com.chatauth.verticles;
 
-import com.arevadze.Main;
+import com.chatauth.Main;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
