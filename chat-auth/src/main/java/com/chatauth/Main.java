@@ -1,25 +1,40 @@
 package com.chatauth;
 
-import com.chatauth.handlers.AuthorizationHandler;
-import com.chatauth.verticles.AuthorizationVerticle;
-import com.chatauth.verticles.JdbcVerticle;
+import com.chatauth.codecs.CreateUserMessageCodec;
+import com.chatauth.domain.CreateUser;
+import com.chatauth.verticles.AddUserVerticle;
+import com.chatauth.http.HttpServerVerticle;
+import com.chatauth.verticles.AddUserRepoVerticle;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
-import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.Router;
-import io.vertx.ext.web.RoutingContext;
+import io.vertx.ext.jdbc.JDBCClient;
 
 
 public class Main extends AbstractVerticle {
 
 
   public static void main(String[] args) {
-    Vertx vertx = Vertx.vertx();
 
-    vertx.deployVerticle(new AuthorizationVerticle());
-    vertx.deployVerticle(new JdbcVerticle());
+    var vertx = Vertx.vertx();
+
+    // TODO: later read from configuration
+    var config = new JsonObject()
+      .put("url", "jdbc:postgresql://localhost:5432/mydatabase")
+      .put("driver_class", "org.postgresql.Driver")
+      .put("user", "postgres")
+      .put("password", "123");
+
+    // jdbc client
+    var jdbcClient = JDBCClient.createShared(vertx, config);
+
+    // register codecs for sending and receiving messages between verticles
+    vertx.eventBus().registerDefaultCodec(CreateUser.class, new CreateUserMessageCodec());
+
+    // deploy verticles
+    vertx.deployVerticle(new HttpServerVerticle());
+    vertx.deployVerticle(new AddUserRepoVerticle(null));
+    vertx.deployVerticle(new AddUserVerticle());
   }
 }
 
