@@ -63,6 +63,18 @@ public class HttpServerVerticle extends AbstractVerticle {
    * 6) HttpServerVerticle sends message to frontend / UI.
    */
 
+  /**
+   * msg -> (shemodis AddUserVerticle-shi)
+   * class InitialMessage(HttpMessage httpMessage (msg), ???)
+   *
+   * 1) HttpServerVerticle -> 2) AddUserVerticle -> 3) CheckUserVerticles
+   * 3) CheckUserVerticles -> 4) AddUserRepoVerticle -> msg.reply(???, ???)
+   */
+
+  /** intiial               business logic      db operations
+   * HttpServerVerticle -> AddUserVerticle -> AddUserRepoVerticle
+   */
+
   private void addUser(RoutingContext ctx) {
     ctx.request()
       .body()
@@ -78,5 +90,7 @@ public class HttpServerVerticle extends AbstractVerticle {
       })
       .onFailure(err -> ctx.request().response().end("Error during json decoding"));
   }
+
+
 
 }

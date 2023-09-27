@@ -37,6 +37,10 @@ dependencies {
   implementation ("org.hibernate:hibernate-core:5.5.6.Final") // Use the appropriate version
   implementation ("org.postgresql:postgresql:42.2.24")
   implementation("org.jetbrains:annotations:24.0.0")
+  implementation("org.slf4j:slf4j-api:2.0.7")
+  implementation("io.jsonwebtoken:jjwt-api:0.11.5")
+  implementation("io.vertx:vertx-auth-jwt:4.4.5")
+
   compileOnly ("org.projectlombok:lombok:1.18.22") // Use the latest version
   annotationProcessor ("org.projectlombok:lombok:1.18.22")
   testImplementation("io.vertx:vertx-junit5")
