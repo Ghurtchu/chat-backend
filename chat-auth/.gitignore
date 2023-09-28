@@ -75,6 +75,11 @@ local.properties
 .idea/**/gradle.xml
 .idea/**/libraries
 
+/build/
+
+# Ignore the Gradle wrapper and caches
+/.gradle/
+
 # CMake
 cmake-buildTool-debug/
 
