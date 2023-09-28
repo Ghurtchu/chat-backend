@@ -23,6 +23,7 @@ cd msgFlow/chat-backend
 ```
 
 ## Step 2: Start PostgreSQL with Docker
+## TODO: user docker-compose later
 ```bash
 docker run --name chat-postgres -e POSTGRES_PASSWORD=mysecretpassword -d -p 5433:5432 postgres  
 ```
@@ -34,6 +35,7 @@ docker ps -a
 You should see an entry for the chat-postgres container in the list.
 
 ## Step 4: Initialize DB in docker container
+## TODO: create init.sql and extract SQL queries there
 ```bash
 ./init_db.sh
 ```
