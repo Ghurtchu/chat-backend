@@ -80,6 +80,8 @@ local.properties
 # Ignore the Gradle wrapper and caches
 /.gradle/
 
+/.gradle/*
+
 # CMake
 cmake-buildTool-debug/
 
