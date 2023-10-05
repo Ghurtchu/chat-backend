@@ -7,6 +7,7 @@ import com.chatauth.http.HttpServerVerticle;
 import com.chatauth.verticles.AddUserRepoVerticle;
 import com.chatauth.verticles.CheckUserVerticle;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
@@ -33,7 +34,10 @@ public class Main extends AbstractVerticle {
     vertx.eventBus().registerDefaultCodec(CreateUser.class, new CreateUserMessageCodec());
 
     // deploy verticles
+
+
     vertx.deployVerticle(new HttpServerVerticle());
+
     vertx.deployVerticle(new AddUserRepoVerticle(jdbcClient));
     vertx.deployVerticle(new AddUserVerticle());
     vertx.deployVerticle(new CheckUserVerticle(jdbcClient));

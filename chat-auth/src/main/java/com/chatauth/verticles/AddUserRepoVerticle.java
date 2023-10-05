@@ -1,6 +1,7 @@
 package com.chatauth.verticles;
 
 import com.chatauth.domain.CreateUser;
+import com.chatauth.messages.CreateUserRequest;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.json.JsonArray;
@@ -27,6 +28,10 @@ public class AddUserRepoVerticle extends AbstractVerticle {
     bus.consumer(VerticlePathConstants.ADD_USER_REPO, msg -> {
       // tu unda chawero -> id
       // tu ar unda chawero -> false
+      var body = msg.body();
+      if (body instanceof CreateUserRequest message) {
+        // respond with UserCreationReply(...)
+      }
 
       CreateUser user = (CreateUser) msg.body();
       jdbcClient.getConnection(asyncConnection -> {

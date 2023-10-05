@@ -1,5 +1,7 @@
 package com.chatauth.http;
 
+import com.chatauth.domain.CreateUser;
+import com.chatauth.messages.CreateUserRequest;
 import com.chatauth.verticles.VerticlePathConstants;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.buffer.Buffer;
@@ -80,7 +82,8 @@ public class HttpServerVerticle extends AbstractVerticle {
       .body()
       .map(Buffer::toJsonObject)
       .onSuccess(userJson -> {
-        vertx.eventBus().request(VerticlePathConstants.ADD_USER, userJson, asyncReply -> {
+        var msg = new CreateUserRequest(CreateUser.fromJson(userJson));
+        vertx.eventBus().request(VerticlePathConstants.ADD_USER, msg, asyncReply -> {
           if (asyncReply.succeeded()) {
             ctx.request().response().end(asyncReply.result().body().toString());
           } else {

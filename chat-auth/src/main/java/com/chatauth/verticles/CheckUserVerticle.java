@@ -1,8 +1,8 @@
 package com.chatauth.verticles;
 
 import com.chatauth.domain.CreateUser;
+import com.chatauth.messages.CreateUserRequest;
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.json.JsonArray;
 import io.vertx.ext.jdbc.JDBCClient;
 
 public class CheckUserVerticle extends AbstractVerticle {
@@ -16,7 +16,13 @@ public class CheckUserVerticle extends AbstractVerticle {
   public void start() {
     var bus = vertx.eventBus();
     bus.consumer(VerticlePathConstants.CHECK_USER, msg -> {
-      // cast to IntialHttpMessage
+      var body = msg.body();
+      if (body instanceof CreateUserRequest message) {
+        // check if user exists in db
+        // if not send request to ADD_USER_REPO,
+        // else respond with UserCreationReply(UserCreationStatus.AlreadyExists)
+
+      }
 
       System.out.println("check user verticle");
       // pick IntialHttpMessage.createUser

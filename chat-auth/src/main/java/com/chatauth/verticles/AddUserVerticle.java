@@ -1,9 +1,8 @@
 package com.chatauth.verticles;
 
-import com.chatauth.domain.CreateUser;
+import com.chatauth.messages.CreateUserRequest;
+import com.chatauth.messages.UserCreationReply;
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.eventbus.Message;
-import io.vertx.core.json.JsonObject;
 
 /**
  * Verticle which runs business logic for "Add User" functionality:
@@ -19,35 +18,15 @@ public class AddUserVerticle extends AbstractVerticle {
     var bus = vertx.eventBus();
                                                 // msg from Http layer
     bus.consumer(VerticlePathConstants.ADD_USER, msg -> {
-      // pattern matching - unda gavigot ra tipis mesijia
       var body = msg.body();
-      if (body instanceof JsonObject userJson) {
-        // 1) decode json
-        CreateUser createUser = CreateUser.fromJson(userJson);
+      // initial message from HttpServerVerticle
+      if (body instanceof CreateUserRequest request) {
+        var createUser = request.createUser();
         System.out.println(createUser);
-        /**
-         * skipping 2) and 3) parts
-         * TODO:
-         * - check if user exists in DB
-         * - validate and hash password
-         */
-        // 4) send message to AddUserRepoVerticle through the event bus and register callback
-        // aq gavagzavnit InitialHttpMessage(msg, createUser);
-        // send back to
-        bus.send(VerticlePathConstants.CHECK_USER, createUser);
-        // pirveli message from HttpServerVerticle
-        // aq gaugzavni messages
-      } else {
-        // eseigi pasuxi daabruna CheckUserVerticle-ma imis shesaxeb useri unikaluria tu ara
-        // HttpServerVerticle-s utxari user chaisva tu ara
-        // if true = return "user already exists"
-        // else go to AddUserRepoVerticle
-        // cast on different cass
-
-        // cast correctly to CheckUserResponse
-        // var resp = (CheckUserResponse )msg
-        // var exists = resp.exists
-
+        // send message to AddUserVerticle
+        bus.send(VerticlePathConstants.CHECK_USER, new CreateUserRequest(createUser));
+      } else if (body instanceof UserCreationReply reply) {
+        // idk yet
         var exists = (Boolean) body;
         if (exists) {
           // Http utxari ro arsebobs

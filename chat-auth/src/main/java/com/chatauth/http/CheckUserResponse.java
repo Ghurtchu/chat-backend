@@ -1,5 +1,5 @@
 package com.chatauth.http;
 
-import com.chatauth.messages.InitialHttpMessage;
+import com.chatauth.messages.CreateUserRequest;
 
-public record CheckUserResponse (InitialHttpMessage intialHttpMessage, boolean exists) { }
+public record CheckUserResponse (CreateUserRequest intialHttpMessage, boolean exists) { }
