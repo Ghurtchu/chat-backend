@@ -1,6 +1,7 @@
 package com.chatauth.verticles;
 
 import com.chatauth.domain.CreateUser;
+import com.chatauth.messages.AddUserToDatabase;
 import com.chatauth.messages.CreateUserRequest;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
@@ -11,8 +12,8 @@ import io.vertx.ext.sql.UpdateResult;
 
 
 /**
- * Verticle which inserts user in database and responds to the sender with generated id
- * in an async + non-blocking way.
+ * Inserts user in database and responds to the sender with generated id.
+ * All done in an async + non-blocking way.
  */
 public class AddUserRepoVerticle extends AbstractVerticle {
 
@@ -24,34 +25,33 @@ public class AddUserRepoVerticle extends AbstractVerticle {
 
   @Override
   public void start() {
-    var bus = vertx.eventBus();
+    final var bus = vertx.eventBus();
     bus.consumer(VerticlePathConstants.ADD_USER_REPO, msg -> {
       // tu unda chawero -> id
       // tu ar unda chawero -> false
-      var body = msg.body();
-      if (body instanceof CreateUserRequest message) {
+      final var body = msg.body();
+      if (body instanceof AddUserToDatabase req) {
         // respond with UserCreationReply(...)
-      }
-
-      CreateUser user = (CreateUser) msg.body();
-      jdbcClient.getConnection(asyncConnection -> {
-        asyncConnection.map(connection ->
-          connection.updateWithParams(
-            "INSERT INTO \"user\" (username, password) VALUES (?, ?)",
-            new JsonArray().add(user.username()).add(user.password()),
-            asyncResult -> {
-              if (asyncResult.succeeded()) {
-                System.out.println("inserted new user in db");
-                // send back new user id
-                var newUserId = asyncResult.result().getKeys().getLong(0);
-                msg.reply(String.valueOf(newUserId));
-              } else {
-                msg.reply("DB operation failed");
+        final var user = req.createUser();
+        jdbcClient.getConnection(asyncConnection -> {
+          asyncConnection.map(connection ->
+            connection.updateWithParams(
+              "INSERT INTO \"user\" (username, password) VALUES (?, ?)",
+              new JsonArray().add(user.username()).add(user.password()),
+              asyncResult -> {
+                if (asyncResult.succeeded()) {
+                  System.out.println("inserted new user in db");
+                  // send back new user id
+                  var newUserId = asyncResult.result().getKeys().getLong(0);
+                  msg.reply(String.valueOf(newUserId));
+                } else {
+                  msg.reply("DB operation failed");
+                }
               }
-            }
-          )
-        );
-      });
+            )
+          );
+        });
+      }
     });
 
   }

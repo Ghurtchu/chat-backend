@@ -18,26 +18,26 @@ public class Main extends AbstractVerticle {
 
   public static void main(String[] args) {
 
-    var vertx = Vertx.vertx();
+    // get global vertx instance
+    final var vertx = Vertx.vertx();
 
+    // create configuration on the fly
     // TODO: later read from configuration
-    var config = new JsonObject()
+    final var config = new JsonObject()
       .put("url", "jdbc:postgresql://localhost:5432/mydatabase")
       .put("driver_class", "org.postgresql.Driver")
       .put("user", "postgres")
       .put("password", "123");
 
     // jdbc client
-    var jdbcClient = JDBCClient.createShared(vertx, config);
+    final var jdbcClient = JDBCClient.createShared(vertx, config);
 
     // register codecs for sending and receiving messages between verticles
+    // codecs are necessary for se/deserializing verticle messages
     vertx.eventBus().registerDefaultCodec(CreateUser.class, new CreateUserMessageCodec());
 
-    // deploy verticles
-
-
+    // deploy verticles so that they are ready to receive and send messages to each other
     vertx.deployVerticle(new HttpServerVerticle());
-
     vertx.deployVerticle(new AddUserRepoVerticle(jdbcClient));
     vertx.deployVerticle(new AddUserVerticle());
     vertx.deployVerticle(new CheckUserVerticle(jdbcClient));
