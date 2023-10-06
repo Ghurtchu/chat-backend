@@ -39,10 +39,10 @@ public class AddUserRepoVerticle extends AbstractVerticle {
                 if (asyncResult.succeeded()) {
                   System.out.println("inserted new user in db");
                   // send back new user id
-                  var newUserId = asyncResult.result().getKeys().getLong(0);
-                  msg.reply(String.valueOf(newUserId));
+                  final var newUserId = asyncResult.result().getKeys().getLong(0);
+                  req.replyTo().reply(String.valueOf(newUserId));
                 } else {
-                  msg.reply("DB operation failed");
+                  req.replyTo().reply("database operation failed");
                 }
               }
             )
