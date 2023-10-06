@@ -70,6 +70,11 @@ public class HttpServerVerticle extends AbstractVerticle {
             ctx.request().response().end("Something went wrong");
           }
         });
+
+        // alternative
+        vertx.eventBus().consumer("http-verticle", asyncReply -> {
+          ctx.request().response().end(asyncReply.body().toString());
+        });
       })
       .onFailure(err -> ctx.request().response().end("Error during json decoding"));
   }

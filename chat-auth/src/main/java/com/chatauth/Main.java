@@ -21,6 +21,11 @@ public class Main extends AbstractVerticle {
     // get global vertx instance
     final var vertx = Vertx.vertx();
 
+    
+
+    // deployment options
+    final var options = new DeploymentOptions().setInstances(16);
+
     // create configuration on the fly
     // TODO: later read from configuration
     final var config = new JsonObject()
@@ -37,10 +42,10 @@ public class Main extends AbstractVerticle {
     vertx.eventBus().registerDefaultCodec(CreateUser.class, new CreateUserMessageCodec());
 
     // deploy verticles so that they are ready to receive and send messages to each other
-    vertx.deployVerticle(new HttpServerVerticle());
-    vertx.deployVerticle(new AddUserRepoVerticle(jdbcClient));
-    vertx.deployVerticle(new AddUserVerticle());
-    vertx.deployVerticle(new CheckUserVerticle(jdbcClient));
+    vertx.deployVerticle(new HttpServerVerticle(), options);
+    vertx.deployVerticle(new AddUserRepoVerticle(jdbcClient), options);
+    vertx.deployVerticle(new AddUserVerticle(), options);
+    vertx.deployVerticle(new CheckUserVerticle(jdbcClient), options);
   }
 }
 
