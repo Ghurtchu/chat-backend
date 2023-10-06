@@ -27,11 +27,8 @@ public class AddUserRepoVerticle extends AbstractVerticle {
   public void start() {
     final var bus = vertx.eventBus();
     bus.consumer(VerticlePathConstants.ADD_USER_REPO, msg -> {
-      // tu unda chawero -> id
-      // tu ar unda chawero -> false
       final var body = msg.body();
       if (body instanceof AddUserToDatabase req) {
-        // respond with UserCreationReply(...)
         final var user = req.createUser();
         jdbcClient.getConnection(asyncConnection -> {
           asyncConnection.map(connection ->
@@ -53,8 +50,5 @@ public class AddUserRepoVerticle extends AbstractVerticle {
         });
       }
     });
-
   }
-
-
 }

@@ -23,7 +23,9 @@ public class CheckUserVerticle extends AbstractVerticle {
           // check if user exists in db
           // if not send request to ADD_USER_REPO,
           // else respond with UserCreationReply(UserCreationStatus.AlreadyExists)
-          final var username = req.createUserRequest().createUser().username();
+          final var createUser = req.createUserRequest().createUser();
+          final var replyTo = req.replyTo();
+          final var username = createUser.username();
           jdbcClient.getConnection(asyncConnection -> {
             asyncConnection.map(connection ->
               connection.queryWithParams(
@@ -37,8 +39,8 @@ public class CheckUserVerticle extends AbstractVerticle {
                         new CheckUserReply(
                           true,
                           "user does not exist",
-                          req.createUserRequest().createUser(),
-                          req.replyTo()
+                          createUser,
+                          replyTo
                         )
                       );
                     } else {
@@ -47,8 +49,8 @@ public class CheckUserVerticle extends AbstractVerticle {
                         new CheckUserReply(
                           false,
                           "user already exists",
-                          req.createUserRequest().createUser(),
-                          req.replyTo()
+                          createUser,
+                          replyTo
                         )
                       );
                     }
@@ -58,8 +60,8 @@ public class CheckUserVerticle extends AbstractVerticle {
                       new CheckUserReply(
                         false,
                         "database operation failed",
-                        req.createUserRequest().createUser(),
-                        req.replyTo()
+                        createUser,
+                        replyTo
                       )
                     );
                   }
