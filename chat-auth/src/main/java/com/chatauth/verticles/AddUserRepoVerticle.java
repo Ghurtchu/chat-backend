@@ -1,10 +1,13 @@
 package com.chatauth.verticles;
 
 import com.chatauth.domain.CreateUser;
+import com.chatauth.domain.User;
 import com.chatauth.messages.AddUserToDatabase;
 import com.chatauth.messages.CreateUserRequest;
+import com.chatauth.messages.UserCreated;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Verticle;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.sql.SQLConnection;
@@ -25,9 +28,13 @@ public class AddUserRepoVerticle extends AbstractVerticle {
 
   @Override
   public void start() {
+    // bus
     final var bus = vertx.eventBus();
+    // consuming logic
     bus.consumer(VerticlePathConstants.ADD_USER_REPO, msg -> {
+      // body
       final var body = msg.body();
+      // msg from UserValidatorVerticle
       if (body instanceof AddUserToDatabase req) {
         final var user = req.createUser();
         jdbcClient.getConnection(asyncConnection -> {
@@ -40,9 +47,17 @@ public class AddUserRepoVerticle extends AbstractVerticle {
                   System.out.println("inserted new user in db");
                   // send back new user id
                   final var newUserId = asyncResult.result().getKeys().getLong(0);
-                  req.replyTo().reply(String.valueOf(newUserId));
+                  final var newUser = new User(newUserId, user.username(), user.password());
+                  final var response = new UserCreated(newUser);
+                  bus.send(
+                    VerticlePathConstants.SIGNUP,
+                    response
+                  );
                 } else {
-                  req.replyTo().reply("database operation failed");
+                  bus.send(
+                    VerticlePathConstants.HTTP_REPLY,
+                    "something went wrong"
+                  );
                 }
               }
             )
