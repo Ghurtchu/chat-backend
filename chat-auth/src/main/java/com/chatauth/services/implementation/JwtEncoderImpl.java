@@ -45,7 +45,7 @@ public class JwtEncoderImpl implements JwtEncoder {
 
   public String generateToken(Map<String, Object> extraClaims,
                               User user) {
-    long issuedAt = System.currentTimeMillis();
+    /*long issuedAt = System.currentTimeMillis();
     long expiresAtUser = issuedAt + 1000 * 60 * 60 * 24 * 5;
     long expiresAt = expiresAtUser;
     Date issued = new Date(issuedAt);
@@ -54,12 +54,13 @@ public class JwtEncoderImpl implements JwtEncoder {
     logger.info("token created at: " + issued);
     logger.info("token will expire at" + expires);
     return Jwts
-      .builder().setClaims(extraClaims)
+     .builder().setClaims(extraClaims)
       .setSubject(user.username())
       .setIssuedAt(issued)
       .setExpiration(expires)
       .signWith(getSignInKey(), SignatureAlgorithm.HS256)
-      .compact();
+      .compact();*/
+    return "mogityan deda";
   }
 
 

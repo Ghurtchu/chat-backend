@@ -12,6 +12,8 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.CorsHandler;
 
+import java.util.function.Function;
+
 /**
  * Creates http server instance.
  * Accepts requests on predefined paths and sends messages to different verticles.
@@ -69,17 +71,7 @@ public class HttpServerVerticle extends AbstractVerticle {
         // event bus
         final var bus = vertx.eventBus();
         // request logic
-        bus.request(
-            VerticlePathConstants.SIGNUP, // send to this location
-            msg, // send this message
-            asyncReply -> { // set callback for async reply
-          if (asyncReply.succeeded()) { // if successful
-            ctx.request().response().end(asyncReply.result().body().toString()); // send JWT to UI
-          } else {
-            ctx.request().response().end("Something went wrong"); // send fail message
-          }
-        });
-
+        bus.send(VerticlePathConstants.SIGNUP, msg);
         // consuming logic
         bus.consumer(
           VerticlePathConstants.HTTP_REPLY,
@@ -92,8 +84,8 @@ public class HttpServerVerticle extends AbstractVerticle {
               ctx.request().response().end(js.encodePrettily());
             } else {
               System.out.println("not handled");
+              System.out.println(body);
             }
-
           }
         );
       })

@@ -4,6 +4,7 @@ import com.chatauth.messages.*;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.jdbc.JDBCClient;
+import org.hibernate.tool.schema.internal.exec.ScriptTargetOutputToFile;
 
 public class UserValidatorVerticle extends AbstractVerticle {
   private final JDBCClient jdbcClient;
@@ -27,13 +28,16 @@ public class UserValidatorVerticle extends AbstractVerticle {
           jdbcClient.getConnection(asyncConnection -> {
             asyncConnection.map(connection ->
               connection.queryWithParams(
-                "SELECT COUNT FROM \"user\" WHERE username = ?",
+                "SELECT COUNT(*) FROM \"user\" WHERE username = ?",
                 new JsonArray().add(username),
                 asyncQueryResult -> {
                   // if query was successful
                   if (asyncQueryResult.succeeded()) {
                     // if 0 was returned = username does not exist
-                    if (asyncQueryResult.result().getResults().get(0).contains(0)) {
+                    System.out.println(asyncQueryResult.result().getResults().get(0));
+                    var result = asyncQueryResult.result().getResults().get(0);
+                    var expected = new JsonArray().add(0, 0L);
+                    if (result.equals(expected)) {
                       // proceed, user does not exist
                       // bus.send()
                       bus.send(
