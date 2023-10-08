@@ -1,37 +1,53 @@
 package com.chatauth.http;
 
+import com.chatauth.domain.CreateUser;
+import com.chatauth.messages.CreateUserRequest;
+import com.chatauth.messages.UserJWTGenerated;
 import com.chatauth.verticles.VerticlePathConstants;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
-import io.vertx.core.http.HttpServer;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.CorsHandler;
 
+/**
+ * Creates http server instance.
+ * Accepts requests on predefined paths and sends messages to different verticles.
+ * For now it accepts request on /signup and sends CreateUserRequest(...) message to AddUserVerticle
+ * ...
+ * ...
+ * Finally it receives response from some verticle and then sends the response (jwt token) to the client.
+ */
 public class HttpServerVerticle extends AbstractVerticle {
 
   @Override
   public void start() {
 
-    CorsHandler corsHandler = CorsHandler.create("*")  // Allow requests from any origin
+    // Allow requests from any origin
+    final var corsHandler = CorsHandler.create("*")
       .allowedMethod(io.vertx.core.http.HttpMethod.GET)
       .allowedMethod(io.vertx.core.http.HttpMethod.POST)
       .allowedHeader("Content-Type");
 
-    Router router = Router.router(vertx);
+    // Create router
+    final var router = Router.router(vertx);
 
-    HttpServer server = vertx.createHttpServer();
+    // Create server
+    final var server = vertx.createHttpServer();
 
     // Add the CorsHandler to your routes
     router.route().handler(corsHandler);
 
-    // Create a Router to handle routes
-    // Define a route for POST requests to /auth
-
+    // Define a route for health check
     router.route(HttpMethod.GET, "/").handler(ctx -> ctx.response().end("hello"));
-    router.route(HttpMethod.POST, "/add-user").handler(this::addUser);
+    // Define a route for POST requests to /add-user
+    router.route(HttpMethod.POST, "/signup").handler(this::signup);
 
+    router.route(HttpMethod.POST, "/login").handler(null);
+
+    // set handler to server
     server.requestHandler(router);
 
     // Listen on port 8080
@@ -43,52 +59,45 @@ public class HttpServerVerticle extends AbstractVerticle {
       }
     });
   }
-
-  /**
-   * Thread pool = 8 thread
-   * Flow of addUser (asynchronously)
-   * 1) HttpServerVerticle - receives all requests and registered handlers
-   * 2) Sends message to AddUserVerticle
-   * 3) AddUserVerticle decodes JSON and sends message to AddUserRepoVerticle
-   * 4) AddUserRepoVerticle:
-   *    4.1) decodes JSON to CreateUser
-   *    4.2) makes sure that username is unique (Sends message to CheckUsernameUniquenessVerticle, which returns boolean)
-   *    4.3) if user doesn't exist (success):
-   *       4.3.1) checks if password is eligible (at least 8 characters, at least one uppercase character)
-   *       4.3.2) hashes the password (optional)
-   *       4.3.3) inserts user with hashed password in db and replies to AddUserVerticle with new id
-   *    4.4) if user exists (failure):
-   *       4.4.1) respond to AddUserVerticle with message "username is already taken, choose different username"
-   * 5) AddUserVerticle responds back to HttpServerVerticle
-   * 6) HttpServerVerticle sends message to frontend / UI.
-   */
-
-  /**
-   * msg -> (shemodis AddUserVerticle-shi)
-   * class InitialMessage(HttpMessage httpMessage (msg), ???)
-   *
-   * 1) HttpServerVerticle -> 2) AddUserVerticle -> 3) CheckUserVerticles
-   * 3) CheckUserVerticles -> 4) AddUserRepoVerticle -> msg.reply(???, ???)
-   */
-
-  /** intiial               business logic      db operations
-   * HttpServerVerticle -> AddUserVerticle -> AddUserRepoVerticle
-   */
-
-  private void addUser(RoutingContext ctx) {
-    ctx.request()
-      .body()
-      .map(Buffer::toJsonObject)
-      .onSuccess(userJson -> {
-        vertx.eventBus().request(VerticlePathConstants.ADD_USER, userJson, asyncReply -> {
-          if (asyncReply.succeeded()) {
-            ctx.request().response().end(asyncReply.result().body().toString());
+  private void signup(RoutingContext ctx) {
+    ctx.request() // req
+      .body() // body
+      .map(Buffer::toJsonObject) // parse json
+      .onSuccess(userJson -> { // if success
+        // create special msg for ADD_USER
+        final var msg = new CreateUserRequest(CreateUser.fromJson(userJson));
+        // event bus
+        final var bus = vertx.eventBus();
+        // request logic
+        bus.request(
+            VerticlePathConstants.SIGNUP, // send to this location
+            msg, // send this message
+            asyncReply -> { // set callback for async reply
+          if (asyncReply.succeeded()) { // if successful
+            ctx.request().response().end(asyncReply.result().body().toString()); // send JWT to UI
           } else {
-            ctx.request().response().end("Something went wrong");
+            ctx.request().response().end("Something went wrong"); // send fail message
           }
         });
+
+        // consuming logic
+        bus.consumer(
+          VerticlePathConstants.HTTP_REPLY,
+          asyncReply -> {
+            final var body = asyncReply.body();
+            if (body instanceof UserJWTGenerated reply) {
+              var js = new JsonObject()
+                .put("userId", Long.toString(reply.userId()))
+                .put("jwt", reply.jwt());
+              ctx.request().response().end(js.encodePrettily());
+            } else {
+              System.out.println("not handled");
+            }
+
+          }
+        );
       })
-      .onFailure(err -> ctx.request().response().end("Error during json decoding"));
+      .onFailure(err -> ctx.request().response().end("Incorrect JSON format"));
   }
 
 
