@@ -5,7 +5,7 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.MessageCodec;
 import io.vertx.core.json.JsonObject;
 
-public class CreateUserMessageCodec implements MessageCodec<CreateUser, CreateUser> {
+public class CreateUserCodec implements MessageCodec<CreateUser, CreateUser> {
 
   @Override
   public void encodeToWire(Buffer buffer, CreateUser createUser) {
