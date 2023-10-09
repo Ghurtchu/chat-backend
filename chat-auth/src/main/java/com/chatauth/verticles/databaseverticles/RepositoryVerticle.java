@@ -1,10 +1,14 @@
 package com.chatauth.verticles.databaseverticles;
 
+import com.chatauth.domain.CreateUser;
 import com.chatauth.domain.User;
 import com.chatauth.messages.AddUserToDatabase;
 import com.chatauth.messages.UserCreated;
+import com.chatauth.messages.loginmessages.LoginRequest;
+import com.chatauth.messages.loginmessages.LoginSuccess;
 import com.chatauth.paths.VerticlePathConstants;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.jdbc.JDBCClient;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +19,7 @@ import lombok.RequiredArgsConstructor;
  * All done in an async + non-blocking way.
  */
 @RequiredArgsConstructor
-public class AddUserRepoVerticle extends AbstractVerticle {
+public class RepositoryVerticle extends AbstractVerticle {
 
   private final JDBCClient jdbcClient;
   @Override
@@ -36,7 +40,6 @@ public class AddUserRepoVerticle extends AbstractVerticle {
               new JsonArray().add(user.username()).add(user.password()),
               asyncResult -> {
                 if (asyncResult.succeeded()) {
-                  System.out.println("inserted new user in db");
                   // send back new user id
                   final var newUserId = asyncResult.result().getKeys().getLong(0);
                   final var newUser = new User(newUserId, user.username(), user.password());
@@ -47,7 +50,7 @@ public class AddUserRepoVerticle extends AbstractVerticle {
                   );
                 } else {
                   bus.send(
-                    VerticlePathConstants.HTTP_REPLY,
+                    VerticlePathConstants.HTTP_SIGNUP_REPLY,
                     "something went wrong"
                   );
                 }
@@ -57,5 +60,45 @@ public class AddUserRepoVerticle extends AbstractVerticle {
         });
       }
     });
-  }
-}
+
+    bus.consumer(VerticlePathConstants.LOGIN_CHECK, msg -> {
+
+      final var body = msg.body();
+
+      if (body instanceof LoginRequest req) {
+
+        jdbcClient.getConnection(asyncConnection -> {
+
+          final var user = req.createUser();
+          asyncConnection.map(connection -> connection.queryWithParams(
+            "SELECT * FROM \"user\" WHERE username = ? AND password = ?",
+            new JsonArray().add(user.username()).add(user.password()),
+            asyncResult -> {
+
+              if (asyncResult.succeeded()) {
+                // send back new user id
+                System.out.println(asyncResult.result().getResults().get(0).getLong(0).toString());
+                long userId = asyncResult.result().getResults().get(0).getLong(0);
+                  User user1 =
+                    User.builder()
+                    .id(userId)
+                    .username(user.username())
+                    .password(user.password()).build();
+                bus.send(
+                  VerticlePathConstants.LOGIN,
+                  new LoginSuccess(user1)
+                );
+
+              } else {
+                bus.send(
+                  VerticlePathConstants.HTTP_LOGIN_REPLY,
+                  "something went wrong"
+                );
+              }
+              })); });
+            };
+        });
+      }
+    }
+
+

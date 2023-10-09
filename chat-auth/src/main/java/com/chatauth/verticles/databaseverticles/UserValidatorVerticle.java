@@ -49,7 +49,7 @@ public class UserValidatorVerticle extends AbstractVerticle {
                       } else {
                         // user already exists, responds to HttpServerVerticle
                         bus.send(
-                          VerticlePathConstants.HTTP_REPLY,
+                          VerticlePathConstants.HTTP_SIGNUP_REPLY,
                           UserAlreadyExists.getInstance()
                         );
                       }
@@ -59,7 +59,7 @@ public class UserValidatorVerticle extends AbstractVerticle {
                       // TODO: create singleton object for DB operation failure
                       // public record DbOpsFailed(String message) { }
                       bus.send(
-                        VerticlePathConstants.HTTP_REPLY,
+                        VerticlePathConstants.HTTP_SIGNUP_REPLY,
                         "db operation failed"
                       );
                     }
@@ -68,7 +68,7 @@ public class UserValidatorVerticle extends AbstractVerticle {
             });
           }
           else
-            bus.send(VerticlePathConstants.HTTP_REPLY, new PasswordCheckFailedMessage(passwordCheck));
+            bus.send(VerticlePathConstants.HTTP_SIGNUP_REPLY, new PasswordCheckFailedMessage(passwordCheck));
         }
       });
 

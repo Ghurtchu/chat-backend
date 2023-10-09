@@ -3,10 +3,12 @@ package com.chatauth;
 import com.chatauth.codecs.*;
 import com.chatauth.domain.CreateUser;
 import com.chatauth.messages.*;
+import com.chatauth.messages.loginmessages.LoginRequest;
+import com.chatauth.messages.loginmessages.LoginSuccess;
 import com.chatauth.services.implementation.JwtEncoderServiceImpl;
-import com.chatauth.verticles.serviceverticles.SignupVerticle;
+import com.chatauth.verticles.serviceverticles.AuthorizationVerticle;
 import com.chatauth.verticles.httpverticles.HttpServerVerticle;
-import com.chatauth.verticles.databaseverticles.AddUserRepoVerticle;
+import com.chatauth.verticles.databaseverticles.RepositoryVerticle;
 import com.chatauth.verticles.databaseverticles.UserValidatorVerticle;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
@@ -42,8 +44,8 @@ public class Main extends AbstractVerticle {
 
     // deploy verticles so that they are ready to receive and send messages to each other
     vertx.deployVerticle(new HttpServerVerticle());
-    vertx.deployVerticle(new AddUserRepoVerticle(jdbcClient));
-    vertx.deployVerticle(new SignupVerticle(new JwtEncoderServiceImpl()));
+    vertx.deployVerticle(new RepositoryVerticle(jdbcClient));
+    vertx.deployVerticle(new AuthorizationVerticle(new JwtEncoderServiceImpl()));
     vertx.deployVerticle(new UserValidatorVerticle(jdbcClient));
   }
 
@@ -65,6 +67,8 @@ public class Main extends AbstractVerticle {
                                           new PasswordCheckFailedMessageCodec());
     vertx.eventBus().registerDefaultCodec(LoginRequest.class,
       new LoginRequestCodec());
+    vertx.eventBus().registerDefaultCodec(LoginSuccess.class,
+      new LoginSuccessCodec());
   }
 
 }

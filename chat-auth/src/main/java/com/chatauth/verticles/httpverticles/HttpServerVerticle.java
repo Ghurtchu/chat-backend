@@ -2,6 +2,7 @@ package com.chatauth.verticles.httpverticles;
 
 import com.chatauth.domain.CreateUser;
 import com.chatauth.messages.CreateUserRequest;
+import com.chatauth.messages.loginmessages.LoginRequest;
 import com.chatauth.messages.UserJWTGenerated;
 import com.chatauth.paths.VerticlePathConstants;
 import io.vertx.core.AbstractVerticle;
@@ -43,9 +44,9 @@ public class HttpServerVerticle extends AbstractVerticle {
     // Define a route for health check
     router.route(HttpMethod.GET, "/").handler(ctx -> ctx.response().end("hello"));
     // Define a route for POST requests to /add-user
-    router.route(HttpMethod.POST, "/signup").handler(this :: signup);
+    router.route(HttpMethod.POST, "/signup").handler(this::signup);
 
-    router.route(HttpMethod.POST, "/login").handler(this :: login);
+    router.route(HttpMethod.POST, "/login").handler(this::login);
 
     // set handler to server
     server.requestHandler(router);
@@ -59,6 +60,7 @@ public class HttpServerVerticle extends AbstractVerticle {
       }
     });
   }
+
   private void signup(RoutingContext ctx) {
     ctx.request() // req
       .body() // body
@@ -72,7 +74,7 @@ public class HttpServerVerticle extends AbstractVerticle {
         bus.send(VerticlePathConstants.SIGNUP, msg);
         // consuming logic
         bus.consumer(
-          VerticlePathConstants.HTTP_REPLY,
+          VerticlePathConstants.HTTP_SIGNUP_REPLY,
           asyncReply -> {
             final var body = asyncReply.body();
             if (body instanceof UserJWTGenerated reply) {
@@ -89,14 +91,31 @@ public class HttpServerVerticle extends AbstractVerticle {
       })
       .onFailure(err -> ctx.request().response().end("Incorrect JSON format"));
   }
+
   public void login(RoutingContext ctx) {
     ctx.request() // req
       .body() // body
       .map(Buffer::toJsonObject) // parse json
       .onSuccess(userJson -> {
-        final var msg = new CreateUserRequest(CreateUser.fromJson(userJson));
+        final var msg = new LoginRequest(CreateUser.fromJson(userJson));
         // event bus
         final var bus = vertx.eventBus();
+        bus.send(VerticlePathConstants.LOGIN, msg);
+
+        bus.consumer(
+          VerticlePathConstants.HTTP_LOGIN_REPLY,
+          asyncReply -> {
+            final var body = asyncReply.body();
+            if (body instanceof UserJWTGenerated reply) {
+              var js = new JsonObject()
+                .put("userId", Long.toString(reply.userId()))
+                .put("jwt", reply.jwt());
+              ctx.request().response().end(js.encodePrettily());
+            } else {
+              System.out.println("not handled");
+              System.out.println(body);
+            }
+          });
       });
   }
 }

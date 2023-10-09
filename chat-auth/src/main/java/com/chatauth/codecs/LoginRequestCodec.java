@@ -1,8 +1,7 @@
 package com.chatauth.codecs;
 
 import com.chatauth.domain.CreateUser;
-import com.chatauth.messages.CreateUserRequest;
-import com.chatauth.messages.LoginRequest;
+import com.chatauth.messages.loginmessages.LoginRequest;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.MessageCodec;
 import io.vertx.core.json.JsonObject;
@@ -33,7 +32,7 @@ public class LoginRequestCodec implements MessageCodec<LoginRequest, LoginReques
   @Override
   public String name() {
     // Unique codec name
-    return "create-user-request-codec";
+    return "login-request-codec";
   }
 
   @Override
