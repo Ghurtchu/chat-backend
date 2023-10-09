@@ -2,7 +2,7 @@ package com.chatauth.verticles.serviceverticles;
 
 import com.chatauth.messages.*;
 import com.chatauth.paths.VerticlePathConstants;
-import com.chatauth.services.JwtEncoder;
+import com.chatauth.services.JwtEncoderService;
 import io.vertx.core.AbstractVerticle;
 import lombok.RequiredArgsConstructor;
 
@@ -15,7 +15,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class SignupVerticle extends AbstractVerticle {
 
-  private final JwtEncoder jwtEncoder;
+  private final JwtEncoderService jwtEncoderService;
 
   @Override
   public void start() {
@@ -41,7 +41,7 @@ public class SignupVerticle extends AbstractVerticle {
         // generate jwt
         // send to http verticle
         final var user = reply.user();
-        final String jwt = jwtEncoder.generateToken(user);
+        final String jwt = jwtEncoderService.generateToken(user);
         // send to HTTP - (userId, jwt)
         final var response = new UserJWTGenerated(user.id(), jwt);
         bus.send(

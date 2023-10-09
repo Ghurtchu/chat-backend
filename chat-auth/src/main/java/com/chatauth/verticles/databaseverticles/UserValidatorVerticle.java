@@ -2,20 +2,15 @@ package com.chatauth.verticles.databaseverticles;
 
 import com.chatauth.messages.*;
 import com.chatauth.paths.VerticlePathConstants;
-import edu.vt.middleware.password.*;
+import com.chatauth.services.implementation.ValidatePasswordServiceImpl;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.jdbc.JDBCClient;
+import lombok.RequiredArgsConstructor;
 
-import java.util.ArrayList;
-import java.util.List;
-
+@RequiredArgsConstructor
 public class UserValidatorVerticle extends AbstractVerticle {
   private final JDBCClient jdbcClient;
-
-  public UserValidatorVerticle(JDBCClient client) {
-    this.jdbcClient = client;
-  }
 
   @Override
   public void start() {
@@ -30,7 +25,7 @@ public class UserValidatorVerticle extends AbstractVerticle {
           final var createUser = req.createUser();
           final var username = createUser.username();
           final var password = createUser.password();
-          final String passwordCheck = checkPassword(password);
+          final String passwordCheck = ValidatePasswordServiceImpl.checkPassword(password);
           if (passwordCheck.equals("valid")) {
             jdbcClient.getConnection(asyncConnection -> {
               asyncConnection.map(connection ->
@@ -77,37 +72,5 @@ public class UserValidatorVerticle extends AbstractVerticle {
         }
       });
 
-  }
-  public String checkPassword(String password) {
-    PasswordData passwordData = new PasswordData(new Password(password));
-
-    LengthRule lengthRule = new LengthRule(8, 16);
-
-    WhitespaceRule whitespaceRule = new WhitespaceRule();
-
-    CharacterCharacteristicsRule charRule = new CharacterCharacteristicsRule();
-    charRule.getRules().add(new DigitCharacterRule(1));
-    charRule.getRules().add(new NonAlphanumericCharacterRule(1));
-    charRule.getRules().add(new UppercaseCharacterRule(1));
-    charRule.getRules().add(new LowercaseCharacterRule(1));
-    charRule.setNumberOfCharacteristics(3);
-
-    List<Rule> ruleList = new ArrayList<Rule>();
-    ruleList.add(lengthRule);
-    ruleList.add(whitespaceRule);
-    ruleList.add(charRule);
-
-    PasswordValidator validator = new PasswordValidator(ruleList);
-
-    RuleResult result = validator.validate(passwordData);
-    if (result.isValid()) {
-      return "valid";
-    } else {
-      StringBuilder failureMessage = new StringBuilder("Invalid password:");
-      for (String msg : validator.getMessages(result)) {
-        failureMessage.append("\n").append(msg);
-      }
-      return failureMessage.toString();
-    }
   }
 }

@@ -7,20 +7,17 @@ import com.chatauth.paths.VerticlePathConstants;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.jdbc.JDBCClient;
+import lombok.RequiredArgsConstructor;
 
 
 /**
  * Inserts user in database and responds to the sender with generated id.
  * All done in an async + non-blocking way.
  */
+@RequiredArgsConstructor
 public class AddUserRepoVerticle extends AbstractVerticle {
 
-  private JDBCClient jdbcClient;
-
-  public AddUserRepoVerticle(JDBCClient jdbcClient) {
-    this.jdbcClient = jdbcClient;
-  }
-
+  private final JDBCClient jdbcClient;
   @Override
   public void start() {
     // bus

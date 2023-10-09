@@ -3,7 +3,7 @@ package com.chatauth;
 import com.chatauth.codecs.*;
 import com.chatauth.domain.CreateUser;
 import com.chatauth.messages.*;
-import com.chatauth.services.implementation.JwtEncoderImpl;
+import com.chatauth.services.implementation.JwtEncoderServiceImpl;
 import com.chatauth.verticles.serviceverticles.SignupVerticle;
 import com.chatauth.verticles.httpverticles.HttpServerVerticle;
 import com.chatauth.verticles.databaseverticles.AddUserRepoVerticle;
@@ -43,7 +43,7 @@ public class Main extends AbstractVerticle {
     // deploy verticles so that they are ready to receive and send messages to each other
     vertx.deployVerticle(new HttpServerVerticle());
     vertx.deployVerticle(new AddUserRepoVerticle(jdbcClient));
-    vertx.deployVerticle(new SignupVerticle(new JwtEncoderImpl()));
+    vertx.deployVerticle(new SignupVerticle(new JwtEncoderServiceImpl()));
     vertx.deployVerticle(new UserValidatorVerticle(jdbcClient));
   }
 
