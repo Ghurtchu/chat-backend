@@ -1,7 +1,7 @@
-package com.chatauth.verticles;
+package com.chatauth.verticles.serviceverticles;
 
-import com.chatauth.domain.User;
 import com.chatauth.messages.*;
+import com.chatauth.paths.VerticlePathConstants;
 import com.chatauth.services.JwtEncoder;
 import io.vertx.core.AbstractVerticle;
 import lombok.RequiredArgsConstructor;

@@ -1,17 +1,12 @@
-package com.chatauth.verticles;
+package com.chatauth.verticles.databaseverticles;
 
-import com.chatauth.domain.CreateUser;
 import com.chatauth.domain.User;
 import com.chatauth.messages.AddUserToDatabase;
-import com.chatauth.messages.CreateUserRequest;
 import com.chatauth.messages.UserCreated;
+import com.chatauth.paths.VerticlePathConstants;
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Verticle;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.jdbc.JDBCClient;
-import io.vertx.ext.sql.SQLConnection;
-import io.vertx.ext.sql.UpdateResult;
 
 
 /**

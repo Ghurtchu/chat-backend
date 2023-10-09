@@ -1,11 +1,11 @@
-package com.chatauth.verticles;
+package com.chatauth.verticles.databaseverticles;
 
 import com.chatauth.messages.*;
+import com.chatauth.paths.VerticlePathConstants;
 import edu.vt.middleware.password.*;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.jdbc.JDBCClient;
-import org.hibernate.tool.schema.internal.exec.ScriptTargetOutputToFile;
 
 import java.util.ArrayList;
 import java.util.List;

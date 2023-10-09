@@ -4,15 +4,14 @@ import com.chatauth.codecs.*;
 import com.chatauth.domain.CreateUser;
 import com.chatauth.messages.*;
 import com.chatauth.services.implementation.JwtEncoderImpl;
-import com.chatauth.verticles.SignupVerticle;
-import com.chatauth.http.HttpServerVerticle;
-import com.chatauth.verticles.AddUserRepoVerticle;
-import com.chatauth.verticles.UserValidatorVerticle;
+import com.chatauth.verticles.serviceverticles.SignupVerticle;
+import com.chatauth.verticles.httpverticles.HttpServerVerticle;
+import com.chatauth.verticles.databaseverticles.AddUserRepoVerticle;
+import com.chatauth.verticles.databaseverticles.UserValidatorVerticle;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
-import org.hibernate.annotations.Check;
 
 
 public class Main extends AbstractVerticle {
