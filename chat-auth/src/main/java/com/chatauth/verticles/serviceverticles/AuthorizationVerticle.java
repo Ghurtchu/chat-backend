@@ -1,8 +1,8 @@
 package com.chatauth.verticles.serviceverticles;
 
 import com.chatauth.messages.*;
-import com.chatauth.messages.loginmessages.LoginRequest;
-import com.chatauth.messages.loginmessages.LoginSuccess;
+import com.chatauth.messages.login_messages.LoginRequest;
+import com.chatauth.messages.login_messages.LoginSuccess;
 import com.chatauth.paths.VerticlePathConstants;
 import com.chatauth.services.JwtEncoderService;
 import io.vertx.core.AbstractVerticle;

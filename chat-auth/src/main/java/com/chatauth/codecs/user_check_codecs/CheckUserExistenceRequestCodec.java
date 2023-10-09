@@ -1,4 +1,4 @@
-package com.chatauth.codecs;
+package com.chatauth.codecs.user_check_codecs;
 
 import com.chatauth.domain.CreateUser;
 import com.chatauth.messages.CheckUserExistenceRequest;

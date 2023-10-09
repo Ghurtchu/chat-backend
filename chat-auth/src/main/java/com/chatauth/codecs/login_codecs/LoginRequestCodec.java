@@ -1,7 +1,7 @@
-package com.chatauth.codecs;
+package com.chatauth.codecs.login_codecs;
 
 import com.chatauth.domain.CreateUser;
-import com.chatauth.messages.loginmessages.LoginRequest;
+import com.chatauth.messages.login_messages.LoginRequest;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.eventbus.MessageCodec;
 import io.vertx.core.json.JsonObject;

@@ -1,4 +1,4 @@
-package com.chatauth.codecs;
+package com.chatauth.codecs.user_check_codecs;
 
 import com.chatauth.messages.PasswordCheckFailedMessage;
 import io.vertx.core.buffer.Buffer;

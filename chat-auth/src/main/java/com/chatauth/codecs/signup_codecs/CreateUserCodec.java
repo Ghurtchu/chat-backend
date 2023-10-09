@@ -1,4 +1,4 @@
-package com.chatauth.codecs;
+package com.chatauth.codecs.signup_codecs;
 
 import com.chatauth.domain.CreateUser;
 import io.vertx.core.buffer.Buffer;

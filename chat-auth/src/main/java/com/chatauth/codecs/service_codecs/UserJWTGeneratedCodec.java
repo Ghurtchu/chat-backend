@@ -1,4 +1,4 @@
-package com.chatauth.codecs;
+package com.chatauth.codecs.service_codecs;
 
 import com.chatauth.messages.UserJWTGenerated;
 import io.vertx.core.buffer.Buffer;

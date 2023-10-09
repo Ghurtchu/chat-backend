@@ -1,4 +1,4 @@
-package com.chatauth.codecs;
+package com.chatauth.codecs.user_check_codecs;
 
 import com.chatauth.messages.UserAlreadyExists;
 import io.vertx.core.buffer.Buffer;

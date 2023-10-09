@@ -1,4 +1,4 @@
-package com.chatauth.codecs;
+package com.chatauth.codecs.signup_codecs;
 
 import com.chatauth.domain.User;
 import com.chatauth.messages.UserCreated;

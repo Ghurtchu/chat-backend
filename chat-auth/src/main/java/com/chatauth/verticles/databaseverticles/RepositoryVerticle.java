@@ -1,14 +1,12 @@
 package com.chatauth.verticles.databaseverticles;
 
-import com.chatauth.domain.CreateUser;
 import com.chatauth.domain.User;
 import com.chatauth.messages.AddUserToDatabase;
 import com.chatauth.messages.UserCreated;
-import com.chatauth.messages.loginmessages.LoginRequest;
-import com.chatauth.messages.loginmessages.LoginSuccess;
+import com.chatauth.messages.login_messages.LoginRequest;
+import com.chatauth.messages.login_messages.LoginSuccess;
 import com.chatauth.paths.VerticlePathConstants;
 import io.vertx.core.AbstractVerticle;
-import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.jdbc.JDBCClient;
 import lombok.RequiredArgsConstructor;

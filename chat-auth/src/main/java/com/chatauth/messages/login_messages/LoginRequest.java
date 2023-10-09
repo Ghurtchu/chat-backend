@@ -1,4 +1,4 @@
-package com.chatauth.messages.loginmessages;
+package com.chatauth.messages.login_messages;
 
 import com.chatauth.domain.CreateUser;
 

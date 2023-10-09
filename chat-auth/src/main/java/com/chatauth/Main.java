@@ -1,10 +1,19 @@
 package com.chatauth;
 
-import com.chatauth.codecs.*;
+import com.chatauth.codecs.login_codecs.LoginRequestCodec;
+import com.chatauth.codecs.login_codecs.LoginSuccessCodec;
+import com.chatauth.codecs.service_codecs.UserJWTGeneratedCodec;
+import com.chatauth.codecs.signup_codecs.AddUserToDatabaseCodec;
+import com.chatauth.codecs.signup_codecs.CreateUserCodec;
+import com.chatauth.codecs.signup_codecs.CreateUserRequestCodec;
+import com.chatauth.codecs.signup_codecs.UserCreatedCodec;
+import com.chatauth.codecs.user_check_codecs.CheckUserExistenceRequestCodec;
+import com.chatauth.codecs.user_check_codecs.PasswordCheckFailedMessageCodec;
+import com.chatauth.codecs.user_check_codecs.UserAlreadyExistsCodec;
 import com.chatauth.domain.CreateUser;
 import com.chatauth.messages.*;
-import com.chatauth.messages.loginmessages.LoginRequest;
-import com.chatauth.messages.loginmessages.LoginSuccess;
+import com.chatauth.messages.login_messages.LoginRequest;
+import com.chatauth.messages.login_messages.LoginSuccess;
 import com.chatauth.services.implementation.JwtEncoderServiceImpl;
 import com.chatauth.verticles.serviceverticles.AuthorizationVerticle;
 import com.chatauth.verticles.httpverticles.HttpServerVerticle;
