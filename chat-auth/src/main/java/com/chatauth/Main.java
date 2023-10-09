@@ -1,5 +1,6 @@
 package com.chatauth;
 
+import com.chatauth.codecs.login_codecs.IncorrectPasswordMessageCodec;
 import com.chatauth.codecs.login_codecs.LoginRequestCodec;
 import com.chatauth.codecs.login_codecs.LoginSuccessCodec;
 import com.chatauth.codecs.service_codecs.UserJWTGeneratedCodec;
@@ -12,6 +13,7 @@ import com.chatauth.codecs.user_check_codecs.PasswordCheckFailedMessageCodec;
 import com.chatauth.codecs.user_check_codecs.UserAlreadyExistsCodec;
 import com.chatauth.domain.CreateUser;
 import com.chatauth.messages.*;
+import com.chatauth.messages.login_messages.IncorrectPasswordMessage;
 import com.chatauth.messages.login_messages.LoginRequest;
 import com.chatauth.messages.login_messages.LoginSuccess;
 import com.chatauth.services.implementation.JwtEncoderServiceImpl;
@@ -78,6 +80,8 @@ public class Main extends AbstractVerticle {
       new LoginRequestCodec());
     vertx.eventBus().registerDefaultCodec(LoginSuccess.class,
       new LoginSuccessCodec());
+    vertx.eventBus().registerDefaultCodec(IncorrectPasswordMessage.class,
+      new IncorrectPasswordMessageCodec());
   }
 
 }

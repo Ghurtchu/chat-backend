@@ -7,7 +7,7 @@ import io.vertx.core.eventbus.MessageCodec;
 public class UserAlreadyExistsCodec implements MessageCodec<UserAlreadyExists, UserAlreadyExists> {
 
   @Override
-  public void encodeToWire(Buffer buffer, UserAlreadyExists userAlreadyExists) {
+  public void encodeToWire(Buffer buffer, UserAlreadyExists userAlreadyExistsSingleton) {
     // No need to serialize anything since it's a singleton
   }
   @Override

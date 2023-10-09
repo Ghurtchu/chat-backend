@@ -3,6 +3,7 @@ package com.chatauth.verticles.databaseverticles;
 import com.chatauth.domain.User;
 import com.chatauth.messages.AddUserToDatabase;
 import com.chatauth.messages.UserCreated;
+import com.chatauth.messages.login_messages.IncorrectPasswordMessage;
 import com.chatauth.messages.login_messages.LoginRequest;
 import com.chatauth.messages.login_messages.LoginSuccess;
 import com.chatauth.paths.VerticlePathConstants;
@@ -69,24 +70,30 @@ public class RepositoryVerticle extends AbstractVerticle {
 
           final var user = req.createUser();
           asyncConnection.map(connection -> connection.queryWithParams(
-            "SELECT * FROM \"user\" WHERE username = ? AND password = ?",
-            new JsonArray().add(user.username()).add(user.password()),
+            "SELECT *  FROM \"user\" WHERE username = ?",
+            new JsonArray().add(user.username()),
             asyncResult -> {
 
               if (asyncResult.succeeded()) {
                 // send back new user id
                 System.out.println(asyncResult.result().getResults().get(0).getLong(0).toString());
-                long userId = asyncResult.result().getResults().get(0).getLong(0);
+                if (asyncResult.result().getResults().get(0).getString(2).equals(user.password())) {
+                  long userId = asyncResult.result().getResults().get(0).getLong(0);
                   User user1 =
                     User.builder()
-                    .id(userId)
-                    .username(user.username())
-                    .password(user.password()).build();
-                bus.send(
-                  VerticlePathConstants.LOGIN,
-                  new LoginSuccess(user1)
-                );
-
+                      .id(userId)
+                      .username(user.username())
+                      .password(user.password()).build();
+                  bus.send(
+                    VerticlePathConstants.LOGIN,
+                    new LoginSuccess(user1)
+                  );
+                }
+                else {
+                  bus.send(
+                    VerticlePathConstants.HTTP_LOGIN_REPLY,
+                    IncorrectPasswordMessage.getInstance());
+                }
               } else {
                 bus.send(
                   VerticlePathConstants.HTTP_LOGIN_REPLY,

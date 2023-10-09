@@ -3,6 +3,7 @@ package com.chatauth.verticles.httpverticles;
 import com.chatauth.domain.CreateUser;
 import com.chatauth.messages.CreateUserRequest;
 import com.chatauth.messages.PasswordCheckFailedMessage;
+import com.chatauth.messages.login_messages.IncorrectPasswordMessage;
 import com.chatauth.messages.login_messages.LoginRequest;
 import com.chatauth.messages.UserJWTGenerated;
 import com.chatauth.paths.VerticlePathConstants;
@@ -85,9 +86,7 @@ public class HttpServerVerticle extends AbstractVerticle {
               ctx.request().response().end(js.encodePrettily());
             }
             else if (body instanceof PasswordCheckFailedMessage reply) {
-              var js = new JsonObject()
-                .put("cause", reply.reasonForFailure());
-              ctx.request().response().end(js.encodePrettily());
+              ctx.request().response().end("cause: " + reply.reasonForFailure());
             }
             else {
               System.out.println("not handled");
@@ -113,7 +112,11 @@ public class HttpServerVerticle extends AbstractVerticle {
           VerticlePathConstants.HTTP_LOGIN_REPLY,
           asyncReply -> {
             final var body = asyncReply.body();
-            if (body instanceof UserJWTGenerated reply) {
+            if (body instanceof IncorrectPasswordMessage reply) {
+              ctx.request().response().end("Incorrect Password");
+            }
+
+            else if (body instanceof UserJWTGenerated reply) {
               var js = new JsonObject()
                 .put("userId", Long.toString(reply.userId()))
                 .put("jwt", reply.jwt());
