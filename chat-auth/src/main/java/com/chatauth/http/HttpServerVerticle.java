@@ -45,9 +45,9 @@ public class HttpServerVerticle extends AbstractVerticle {
     // Define a route for health check
     router.route(HttpMethod.GET, "/").handler(ctx -> ctx.response().end("hello"));
     // Define a route for POST requests to /add-user
-    router.route(HttpMethod.POST, "/signup").handler(this::signup);
+    router.route(HttpMethod.POST, "/signup").handler(this :: signup);
 
-    router.route(HttpMethod.POST, "/login").handler(null);
+    router.route(HttpMethod.POST, "/login").handler(this :: login);
 
     // set handler to server
     server.requestHandler(router);
@@ -91,7 +91,14 @@ public class HttpServerVerticle extends AbstractVerticle {
       })
       .onFailure(err -> ctx.request().response().end("Incorrect JSON format"));
   }
-
-
-
+  public void login(RoutingContext ctx) {
+    ctx.request() // req
+      .body() // body
+      .map(Buffer::toJsonObject) // parse json
+      .onSuccess(userJson -> {
+        final var msg = new CreateUserRequest(CreateUser.fromJson(userJson));
+        // event bus
+        final var bus = vertx.eventBus();
+      });
+  }
 }
