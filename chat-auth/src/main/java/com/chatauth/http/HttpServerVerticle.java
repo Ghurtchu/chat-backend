@@ -53,7 +53,7 @@ public class HttpServerVerticle extends AbstractVerticle {
     server.requestHandler(router);
 
     // Listen on port 8080
-    server.listen(8080, result -> {
+    server.listen(8081, result -> {
       if (result.succeeded()) {
         System.out.println("Server is running on port 8080");
       } else {

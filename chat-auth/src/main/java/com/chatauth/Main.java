@@ -62,6 +62,9 @@ public class Main extends AbstractVerticle {
                                           new UserCreatedCodec());
     vertx.eventBus().registerDefaultCodec(UserJWTGenerated.class,
                                           new UserJWTGeneratedCodec());
+    vertx.eventBus().registerDefaultCodec(PasswordCheckFailedMessage.class,
+                                          new PasswordCheckFailedMessageCodec());
   }
+
 }
 
