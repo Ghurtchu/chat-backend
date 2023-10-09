@@ -24,6 +24,7 @@ public class SignupVerticle extends AbstractVerticle {
 
     // consuming logic
     bus.consumer(VerticlePathConstants.SIGNUP, msg -> {
+
       // get body
       final var body = msg.body();
       // initial request form HttpServerVerticle

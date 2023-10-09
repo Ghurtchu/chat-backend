@@ -39,9 +39,11 @@ dependencies {
   implementation("org.jetbrains:annotations:24.0.0")
   implementation("org.slf4j:slf4j-api:2.0.7")
   implementation("io.jsonwebtoken:jjwt-api:0.11.5")
+  implementation("io.jsonwebtoken:jjwt-gson:0.11.5")
+  runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
+  runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
   implementation("io.vertx:vertx-auth-jwt:4.4.5")
   implementation("edu.vt.middleware:vt-password:3.1.2")
-
 
   compileOnly ("org.projectlombok:lombok:1.18.22") // Use the latest version
   annotationProcessor ("org.projectlombok:lombok:1.18.22")
