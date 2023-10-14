@@ -11,12 +11,17 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.CorsHandler;
 import lombok.RequiredArgsConstructor;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Creates http server instance.
@@ -75,28 +80,29 @@ public class HttpServerVerticle extends AbstractVerticle {
         final var msg = new CreateUserRequest(CreateUser.fromJson(userJson));
         final var bus = vertx.eventBus();
         // initial signup attempt: send message to AuthorizationVeritcle
-        bus.send(VerticlePathConstants.SIGNUP, msg);
-        // message consuming logic
-        bus.consumer(
-          VerticlePathConstants.HTTP_SIGNUP_REPLY,
-          asyncReply -> {
-            final var body = asyncReply.body();
-            // JWT was generated
-            if (body instanceof UserJWTGenerated reply) {
-              final var jsonResponse = new JsonObject()
-                .put("userId", Long.toString(reply.userId()))
-                .put("jwt", reply.jwt());
-              ctx.request()
-                .response()
-                .end(jsonResponse.encodePrettily());
-            }
-            // signup failed, password was not strong enough
-            else if (body instanceof PasswordCheckFailedMessage reply) {
-              final var jsonResponse = new JsonObject()
-                .put("failureReason", reply.reason());
-              ctx.request()
-                .response()
-                .end(jsonResponse.encodePrettily());
+          bus.send(VerticlePathConstants.SIGNUP, msg);
+          // message consuming logic
+          bus.consumer(
+                  VerticlePathConstants.HTTP_SIGNUP_REPLY,
+                  asyncReply -> {
+                      final var body = asyncReply.body();
+                      // JWT was generated
+                      if (body instanceof UserJWTGenerated reply) {
+                          // TODO add JSON library later
+                          final var jsonResponse = new JsonObject()
+                                  .put("userId", Long.toString(reply.userId()))
+                                  .put("jwt", reply.jwt());
+                          ctx.request()
+                                  .response()
+                                  .end(jsonResponse.encodePrettily());
+                      }
+                      // signup failed, password was not strong enough
+                      else if (body instanceof PasswordCheckFailedMessage reply) {
+                          List<String> failures = Arrays.stream(reply.failureReasons().split(";")).collect(Collectors.toList());
+                          final var jsonResponse = new JsonObject().put("failureReason", failures);
+                          ctx.request()
+                            .response()
+                            .end(jsonResponse.encodePrettily());
             }
             else {
               System.out.println("Not handled");
