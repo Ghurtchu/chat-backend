@@ -8,6 +8,7 @@ import com.chatauth.messages.login_messages.LoginRequest;
 import com.chatauth.messages.UserJWTGenerated;
 import com.chatauth.paths.VerticlePathConstants;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonObject;
@@ -15,6 +16,7 @@ import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.CorsHandler;
 import lombok.RequiredArgsConstructor;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Creates http server instance.
@@ -61,69 +63,95 @@ public class HttpServerVerticle extends AbstractVerticle {
     router.route(HttpMethod.POST, "/login").handler(this::login);
   }
 
+  /**
+   * handles signup functionality in non-blocking and async I/O
+   */
   private void signup(RoutingContext ctx) {
-    ctx.request() // req
-      .body() // body
-      .map(Buffer::toJsonObject) // parse json
-      .onSuccess(userJson -> { // if success
-        // create special msg for ADD_USER
+    ctx.request()
+      .body()
+      .map(Buffer::toJsonObject)
+      .onSuccess(userJson -> {
+        // create special msg for AuthorizationVerticle
         final var msg = new CreateUserRequest(CreateUser.fromJson(userJson));
-        // event bus
         final var bus = vertx.eventBus();
-        // request logic
+        // initial signup attempt: send message to AuthorizationVeritcle
         bus.send(VerticlePathConstants.SIGNUP, msg);
-        // consuming logic
+        // message consuming logic
         bus.consumer(
           VerticlePathConstants.HTTP_SIGNUP_REPLY,
           asyncReply -> {
             final var body = asyncReply.body();
+            // JWT was generated
             if (body instanceof UserJWTGenerated reply) {
-              var js = new JsonObject()
+              final var jsonResponse = new JsonObject()
                 .put("userId", Long.toString(reply.userId()))
                 .put("jwt", reply.jwt());
-              ctx.request().response().end(js.encodePrettily());
+              ctx.request()
+                .response()
+                .end(jsonResponse.encodePrettily());
             }
+            // signup failed, password was not strong enough
             else if (body instanceof PasswordCheckFailedMessage reply) {
-              ctx.request().response().end("cause: " + reply.reasonForFailure());
+              final var jsonResponse = new JsonObject()
+                .put("failureReason", reply.reason());
+              ctx.request()
+                .response()
+                .end(jsonResponse.encodePrettily());
             }
             else {
-              System.out.println("not handled");
+              System.out.println("Not handled");
               System.out.println(body);
             }
           }
         );
       })
-      .onFailure(err -> ctx.request().response().end("Incorrect JSON format"));
+      .onFailure(invalidJson(ctx));
   }
 
+  /**
+   * handles login functionality in non-blocking and async I/O
+   */
   public void login(RoutingContext ctx) {
-    ctx.request() // req
-      .body() // body
-      .map(Buffer::toJsonObject) // parse json
+    ctx.request()
+      .body()
+      .map(Buffer::toJsonObject)
       .onSuccess(userJson -> {
         final var msg = new LoginRequest(CreateUser.fromJson(userJson));
-        // event bus
         final var bus = vertx.eventBus();
+        // send initial message to login verticle
         bus.send(VerticlePathConstants.LOGIN, msg);
-
+        // message consuming logic
         bus.consumer(
           VerticlePathConstants.HTTP_LOGIN_REPLY,
           asyncReply -> {
             final var body = asyncReply.body();
-            if (body instanceof IncorrectPasswordMessage reply) {
-              ctx.request().response().end("Incorrect Password");
+            // password was incorrect
+            if (body instanceof IncorrectPasswordMessage) {
+              final var jsonResponse = new JsonObject()
+                .put("failureReason", "incorrect username or password");
+              ctx.request()
+                .response()
+                .end(jsonResponse.encodePrettily());
             }
-
+            // JWT was generated
             else if (body instanceof UserJWTGenerated reply) {
-              var js = new JsonObject()
+              final var jsonResponse = new JsonObject()
                 .put("userId", Long.toString(reply.userId()))
                 .put("jwt", reply.jwt());
-              ctx.request().response().end(js.encodePrettily());
+              ctx.request()
+                .response()
+                .end(jsonResponse.encodePrettily());
             } else {
               System.out.println("not handled");
               System.out.println(body);
             }
           });
-      });
+      })
+      .onFailure(invalidJson(ctx));
+  }
+
+  @NotNull
+  private static Handler<Throwable> invalidJson(RoutingContext ctx) {
+    return err -> ctx.request().response().end("Invalid JSON format");
   }
 }

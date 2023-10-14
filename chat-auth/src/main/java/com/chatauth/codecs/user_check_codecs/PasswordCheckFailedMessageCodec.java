@@ -9,17 +9,17 @@ public class PasswordCheckFailedMessageCodec implements MessageCodec<PasswordChe
 
   @Override
   public void encodeToWire(Buffer buffer, PasswordCheckFailedMessage message) {
-    // Convert the reasonForFailure to bytes and write it to the buffer
+    // Convert the reason to bytes and write it to the buffer
     JsonObject json = JsonObject.mapFrom(message);
     String jsonStr = json.encode();
     buffer.appendInt(jsonStr.length());
     buffer.appendString(jsonStr);
-    buffer.appendString(message.reasonForFailure());
+    buffer.appendString(message.reason());
   }
 
   @Override
   public PasswordCheckFailedMessage decodeFromWire(int pos, Buffer buffer) {
-    // Read the reasonForFailure from the buffer and create a new PasswordCheckFailedMessage instance
+    // Read the reason from the buffer and create a new PasswordCheckFailedMessage instance
     String reasonForFailure = buffer.getString(pos, buffer.length());
     return new PasswordCheckFailedMessage(reasonForFailure);
   }

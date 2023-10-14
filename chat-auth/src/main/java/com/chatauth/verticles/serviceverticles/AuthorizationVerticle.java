@@ -21,18 +21,14 @@ public class AuthorizationVerticle extends AbstractVerticle {
 
   @Override
   public void start() {
-    // bus
     var bus = vertx.eventBus();
-
-    // consuming logic
+    // consuming logic for signup
     bus.consumer(VerticlePathConstants.SIGNUP, msg -> {
-
-      // get body
       final var body = msg.body();
       // initial request form HttpServerVerticle
       if (body instanceof CreateUserRequest req) {
         var createUser = req.createUser();
-        // send message to CheckUserVerticle
+        // send message to UserValidatorVerticle
         bus.send(
           VerticlePathConstants.VALIDATE_USER,
           new CheckUserExistenceRequest(createUser)
