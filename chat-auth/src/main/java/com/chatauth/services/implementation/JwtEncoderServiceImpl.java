@@ -1,7 +1,7 @@
 package com.chatauth.services.implementation;
 
 import com.chatauth.domain.User;
-import com.chatauth.services.JwtEncoder;
+import com.chatauth.services.JwtEncoderService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -16,7 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-public class JwtEncoderImpl implements JwtEncoder {
+public class JwtEncoderServiceImpl implements JwtEncoderService {
   private final Logger logger = LoggerFactory.getLogger("logger");
   private static final String SECRET_KEY =
     "2646294A404E635266546A576E5A7234753778214125442A472D4B6150645367";
@@ -53,8 +53,9 @@ public class JwtEncoderImpl implements JwtEncoder {
     Date expires = new Date(expiresAt);
     logger.info("token created at: " + issued);
     logger.info("token will expire at" + expires);
+
     return Jwts
-      .builder().setClaims(extraClaims)
+     .builder().setClaims(extraClaims)
       .setSubject(user.username())
       .setIssuedAt(issued)
       .setExpiration(expires)

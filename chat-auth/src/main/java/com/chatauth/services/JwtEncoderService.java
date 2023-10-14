@@ -11,7 +11,7 @@ import java.util.function.Function;
 /**
  * generates JWT token based on username
  */
-public interface JwtEncoder {
+public interface JwtEncoderService {
   String extractUsername(String token);
 
   Claims extractAllClaims(String token);

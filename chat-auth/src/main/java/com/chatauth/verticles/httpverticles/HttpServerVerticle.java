@@ -1,9 +1,12 @@
-package com.chatauth.http;
+package com.chatauth.verticles.httpverticles;
 
 import com.chatauth.domain.CreateUser;
 import com.chatauth.messages.CreateUserRequest;
+import com.chatauth.messages.PasswordCheckFailedMessage;
+import com.chatauth.messages.login_messages.IncorrectPasswordMessage;
+import com.chatauth.messages.login_messages.LoginRequest;
 import com.chatauth.messages.UserJWTGenerated;
-import com.chatauth.verticles.VerticlePathConstants;
+import com.chatauth.paths.VerticlePathConstants;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
@@ -45,13 +48,13 @@ public class HttpServerVerticle extends AbstractVerticle {
     // Define a route for POST requests to /add-user
     router.route(HttpMethod.POST, "/signup").handler(this::signup);
 
-    router.route(HttpMethod.POST, "/login").handler(null);
+    router.route(HttpMethod.POST, "/login").handler(this::login);
 
     // set handler to server
     server.requestHandler(router);
 
     // Listen on port 8080
-    server.listen(8080, result -> {
+    server.listen(8081, result -> {
       if (result.succeeded()) {
         System.out.println("Server is running on port 8080");
       } else {
@@ -59,6 +62,7 @@ public class HttpServerVerticle extends AbstractVerticle {
       }
     });
   }
+
   private void signup(RoutingContext ctx) {
     ctx.request() // req
       .body() // body
@@ -69,20 +73,10 @@ public class HttpServerVerticle extends AbstractVerticle {
         // event bus
         final var bus = vertx.eventBus();
         // request logic
-        bus.request(
-            VerticlePathConstants.SIGNUP, // send to this location
-            msg, // send this message
-            asyncReply -> { // set callback for async reply
-          if (asyncReply.succeeded()) { // if successful
-            ctx.request().response().end(asyncReply.result().body().toString()); // send JWT to UI
-          } else {
-            ctx.request().response().end("Something went wrong"); // send fail message
-          }
-        });
-
+        bus.send(VerticlePathConstants.SIGNUP, msg);
         // consuming logic
         bus.consumer(
-          VerticlePathConstants.HTTP_REPLY,
+          VerticlePathConstants.HTTP_SIGNUP_REPLY,
           asyncReply -> {
             final var body = asyncReply.body();
             if (body instanceof UserJWTGenerated reply) {
@@ -90,16 +84,48 @@ public class HttpServerVerticle extends AbstractVerticle {
                 .put("userId", Long.toString(reply.userId()))
                 .put("jwt", reply.jwt());
               ctx.request().response().end(js.encodePrettily());
-            } else {
-              System.out.println("not handled");
             }
-
+            else if (body instanceof PasswordCheckFailedMessage reply) {
+              ctx.request().response().end("cause: " + reply.reasonForFailure());
+            }
+            else {
+              System.out.println("not handled");
+              System.out.println(body);
+            }
           }
         );
       })
       .onFailure(err -> ctx.request().response().end("Incorrect JSON format"));
   }
 
+  public void login(RoutingContext ctx) {
+    ctx.request() // req
+      .body() // body
+      .map(Buffer::toJsonObject) // parse json
+      .onSuccess(userJson -> {
+        final var msg = new LoginRequest(CreateUser.fromJson(userJson));
+        // event bus
+        final var bus = vertx.eventBus();
+        bus.send(VerticlePathConstants.LOGIN, msg);
 
+        bus.consumer(
+          VerticlePathConstants.HTTP_LOGIN_REPLY,
+          asyncReply -> {
+            final var body = asyncReply.body();
+            if (body instanceof IncorrectPasswordMessage reply) {
+              ctx.request().response().end("Incorrect Password");
+            }
 
+            else if (body instanceof UserJWTGenerated reply) {
+              var js = new JsonObject()
+                .put("userId", Long.toString(reply.userId()))
+                .put("jwt", reply.jwt());
+              ctx.request().response().end(js.encodePrettily());
+            } else {
+              System.out.println("not handled");
+              System.out.println(body);
+            }
+          });
+      });
+  }
 }
