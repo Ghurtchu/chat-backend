@@ -25,9 +25,15 @@ import io.vertx.config.ConfigRetriever;
 import io.vertx.config.ConfigRetrieverOptions;
 import io.vertx.config.ConfigStoreOptions;
 import io.vertx.core.AbstractVerticle;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
+import io.vertx.core.WorkerExecutor;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.SQLClient;
+import io.vertx.ext.sql.SQLConnection;
+
+import java.io.ObjectInputFilter;
 
 public class Main extends AbstractVerticle {
 
@@ -44,48 +50,32 @@ public class Main extends AbstractVerticle {
     ConfigRetriever.create(vertx, options)
       .getConfig()
       .onSuccess(cfg -> {
-        final var jdbcClient = JDBCClient.createShared(vertx, cfg);
-
-
-        jdbcClient.query("SELECT 1", asyncResult -> {
-          System.out.println("adwadawdawd");
-          if (asyncResult.succeeded()) {
-            System.out.println(
-              "yle var"
-            );
+        System.out.println("Attempting to connect to database");
+        final var jdbc = JDBCClient.createShared(vertx, cfg);
+        jdbc.query("SELECT 1", asyncRes -> {
+          if (asyncRes.failed()) {
+            System.out.printf("Connecting to database failed, reason: %s", asyncRes.cause().getMessage());
+            System.exit(1);
           } else {
-            System.out.println("mainc yle var");
+            System.out.println("Connected to database");
+            registerCodecs(vertx);
+            deployVerticles(vertx, cfg, jdbc);
           }
         });
-        // ping database
-        try {
-          jdbcClient.getConnection(asyncConnection -> {
-            if (asyncConnection.succeeded()) {
-              System.out.println("Successfully connected to database");
-            } else {
-              System.out.println("oeeeeee");
-              throw new RuntimeException("Database is dead");
-            }
-          });
-        } catch (Throwable t) {
-          t.printStackTrace();
-        }
-
-        registerCodecs(vertx);
-
-        // deploy verticles so that they are ready to receive and send messages to each other
-        vertx.deployVerticle(new HttpServerVerticle(
-          cfg.getInteger("port"),
-          cfg.getString("host")
-          ));
-
-        vertx.deployVerticle(new RepositoryVerticle(jdbcClient));
-
-        vertx.deployVerticle(new AuthorizationVerticle(new JwtEncoderServiceImpl()));
-
-        vertx.deployVerticle(new UserValidatorVerticle(jdbcClient));
-
       }).onFailure(System.out::println);
+  }
+
+  /**
+   * Deploy verticles so that they are able to communicate with each other
+   */
+  private static void deployVerticles(Vertx vertx, JsonObject cfg, JDBCClient jdbcClient) {
+    vertx.deployVerticle(new HttpServerVerticle(
+      cfg.getInteger("port"),
+      cfg.getString("host")
+    ));
+    vertx.deployVerticle(new RepositoryVerticle(jdbcClient));
+    vertx.deployVerticle(new AuthorizationVerticle(new JwtEncoderServiceImpl()));
+    vertx.deployVerticle(new UserValidatorVerticle(jdbcClient));
   }
 
   /**
