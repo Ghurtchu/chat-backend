@@ -91,21 +91,15 @@ public class AuthorizationVerticle extends AbstractVerticle {
 
     // Handles Login
     bus.consumer(VerticlePathConstants.LOGIN, msg -> {
-
       final var body = msg.body();
-
       if (body instanceof LoginRequest req) {
-
         var createUser = req.createUser();
-
         bus.send(
           VerticlePathConstants.LOGIN_CHECK,
           new LoginRequest(createUser)
         );
 
-    }
-
-      else if (body instanceof LoginSuccess reply) {
+    } else if (body instanceof LoginSuccess reply) {
         // generate jwt
         // send to http verticle
         final var user = reply.user();

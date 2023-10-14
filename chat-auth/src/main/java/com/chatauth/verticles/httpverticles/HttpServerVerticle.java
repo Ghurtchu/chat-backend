@@ -14,16 +14,18 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.CorsHandler;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Creates http server instance.
  * Accepts requests on predefined paths and sends messages to different verticles.
- * For now it accepts request on /signup and sends CreateUserRequest(...) message to AddUserVerticle
- * ...
- * ...
- * Finally it receives response from some verticle and then sends the response (jwt token) to the client.
+ *
  */
+@RequiredArgsConstructor
 public class HttpServerVerticle extends AbstractVerticle {
+
+  final int port;
+  final String host;
 
   @Override
   public void start() {
@@ -34,33 +36,29 @@ public class HttpServerVerticle extends AbstractVerticle {
       .allowedMethod(io.vertx.core.http.HttpMethod.POST)
       .allowedHeader("Content-Type");
 
-    // Create router
     final var router = Router.router(vertx);
-
-    // Create server
-    final var server = vertx.createHttpServer();
-
-    // Add the CorsHandler to your routes
     router.route().handler(corsHandler);
 
-    // Define a route for health check
-    router.route(HttpMethod.GET, "/").handler(ctx -> ctx.response().end("hello"));
-    // Define a route for POST requests to /add-user
-    router.route(HttpMethod.POST, "/signup").handler(this::signup);
+    final var server = vertx.createHttpServer();
 
-    router.route(HttpMethod.POST, "/login").handler(this::login);
+    defineRoutes(router);
 
     // set handler to server
     server.requestHandler(router);
 
-    // Listen on port 8080
-    server.listen(8081, result -> {
-      if (result.succeeded()) {
-        System.out.println("Server is running on port 8080");
+    server.listen(port, host, asyncResult -> {
+      if (asyncResult.succeeded()) {
+        System.out.printf("Server is running on port %s%n", port);
       } else {
-        System.err.println("Failed to start server: " + result.cause());
+        System.err.println("Failed to start server: " + asyncResult.cause());
       }
     });
+  }
+
+  private void defineRoutes(Router router) {
+    router.route(HttpMethod.GET, "/").handler(ctx -> ctx.response().end("hello"));
+    router.route(HttpMethod.POST, "/signup").handler(this::signup);
+    router.route(HttpMethod.POST, "/login").handler(this::login);
   }
 
   private void signup(RoutingContext ctx) {
