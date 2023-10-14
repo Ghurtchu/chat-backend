@@ -6,7 +6,11 @@ import com.chatauth.services.implementation.ValidatePasswordServiceImpl;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.json.JsonArray;
 import io.vertx.ext.jdbc.JDBCClient;
+import io.vertx.ext.sql.SQLConnection;
 import lombok.RequiredArgsConstructor;
+
+import java.util.List;
+import java.util.Optional;
 
 @RequiredArgsConstructor
 public class UserValidatorVerticle extends AbstractVerticle {
@@ -26,9 +30,12 @@ public class UserValidatorVerticle extends AbstractVerticle {
           final var createUser = req.createUser();
           final var username = createUser.username();
           final var password = createUser.password();
-          final String passwordCheck = ValidatePasswordServiceImpl.checkPassword(password);
-          if (passwordCheck.equals("valid")) {
-            jdbcClient.query("SELECT COUNT(*) FROM \"user\" WHERE username = ?", asyncQueryResult -> {
+          final List<String> failureReasons = new ValidatePasswordServiceImpl().checkPassword(password);
+          if (failureReasons.isEmpty()) {
+            jdbcClient.queryWithParams(
+                    "SELECT COUNT(*) FROM \"user\" WHERE username = ?",
+                    new JsonArray().add(username),
+                    asyncQueryResult -> {
               if (asyncQueryResult.succeeded()) {
                 // if 0 was returned = username does not exist
                 System.out.println(asyncQueryResult.result().getResults().get(0));
@@ -60,8 +67,11 @@ public class UserValidatorVerticle extends AbstractVerticle {
               }
             });
           }
-          else
-            bus.send(VerticlePathConstants.HTTP_SIGNUP_REPLY, new PasswordCheckFailedMessage(passwordCheck));
+          else bus.send(VerticlePathConstants.HTTP_SIGNUP_REPLY, new PasswordCheckFailedMessage(
+            failureReasons
+              .stream()
+              .reduce("", (each, acc) -> acc.concat(":").concat(each))
+          ));
         }
       });
 

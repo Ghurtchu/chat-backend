@@ -14,7 +14,7 @@ public class PasswordCheckFailedMessageCodec implements MessageCodec<PasswordChe
     String jsonStr = json.encode();
     buffer.appendInt(jsonStr.length());
     buffer.appendString(jsonStr);
-    buffer.appendString(message.reason());
+    buffer.appendString(message.failureReasons());
   }
 
   @Override

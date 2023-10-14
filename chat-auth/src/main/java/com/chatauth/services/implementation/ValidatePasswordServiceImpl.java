@@ -5,38 +5,22 @@ import edu.vt.middleware.password.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class ValidatePasswordServiceImpl implements ValidatePasswordService {
-  public static String checkPassword(String password) {
-    PasswordData passwordData = new PasswordData(new Password(password));
 
-    LengthRule lengthRule = new LengthRule(8, 16);
-
-    WhitespaceRule whitespaceRule = new WhitespaceRule();
-
-    CharacterCharacteristicsRule charRule = new CharacterCharacteristicsRule();
-    charRule.getRules().add(new DigitCharacterRule(1));
-    charRule.getRules().add(new NonAlphanumericCharacterRule(1));
-    charRule.getRules().add(new UppercaseCharacterRule(1));
-    charRule.getRules().add(new LowercaseCharacterRule(1));
+  @Override
+  public List<String> checkPassword(String password) {
+    final var passwordData = new PasswordData(new Password(password));
+    final var charRule = new CharacterCharacteristicsRule();
     charRule.setNumberOfCharacteristics(3);
-
-    List<Rule> ruleList = new ArrayList<Rule>();
-    ruleList.add(lengthRule);
-    ruleList.add(whitespaceRule);
-    ruleList.add(charRule);
-
-    PasswordValidator validator = new PasswordValidator(ruleList);
-
-    RuleResult result = validator.validate(passwordData);
-    if (result.isValid()) {
-      return "valid";
-    } else {
-      StringBuilder failureMessage = new StringBuilder("Invalid password:");
-      for (String msg : validator.getMessages(result)) {
-        failureMessage.append("\n").append(msg);
-      }
-      return failureMessage.toString();
-    }
+    charRule.setRules(List.of(
+        new DigitCharacterRule(1),
+        new NonAlphanumericCharacterRule(1),
+        new UppercaseCharacterRule(1)));
+    final var ruleList = List.of(new LengthRule(8, 16), new WhitespaceRule(), charRule);
+    final var validator = new PasswordValidator(ruleList);
+    final var result = validator.validate(passwordData);
+    return result.isValid() ? List.of() : validator.getMessages(result);
   }
 }

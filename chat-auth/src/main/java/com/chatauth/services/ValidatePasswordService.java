@@ -1,7 +1,7 @@
 package com.chatauth.services;
 
+import java.util.List;
+
 public interface ValidatePasswordService {
-  static String checkPassword() {
-    return null;
-  }
+  List<String> checkPassword(String password);
 }
